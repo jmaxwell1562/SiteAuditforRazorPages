@@ -1,0 +1,396 @@
+@page
+@model AuditApp.Pages.AuditModel
+@{
+    ViewData["Title"] = "Site Audit";
+}
+
+<style>
+    .audit-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .audit-form {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: #4CAF50;
+        box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    button {
+        padding: 12px 24px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+
+    .btn-primary {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #45a049;
+    }
+
+    .btn-primary:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background-color: #666;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #555;
+    }
+
+    .status-box {
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 20px 0;
+        min-height: 200px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .status-message {
+        margin: 5px 0;
+        padding: 5px;
+        border-radius: 3px;
+    }
+
+    .status-message.success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-message.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-message.info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .results-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .result-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .result-card h3 {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .result-value {
+        font-size: 32px;
+        font-weight: bold;
+        margin: 10px 0 0 0;
+    }
+
+    .result-card.pass .result-value {
+        color: #4CAF50;
+    }
+
+    .result-card.fail .result-value {
+        color: #f44336;
+    }
+
+    .result-card.review .result-value {
+        color: #ff9800;
+    }
+
+    .result-card.readiness .result-value {
+        color: #2196F3;
+    }
+
+    .report-links {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .report-links h2 {
+        margin-top: 0;
+    }
+
+    .report-link {
+        display: inline-block;
+        margin: 10px 10px 10px 0;
+        padding: 10px 20px;
+        background: #2196F3;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+    }
+
+    .report-link:hover {
+        background: #0b7dda;
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #4CAF50;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 10px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .advanced-options {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 15px;
+    }
+
+    .advanced-options h3 {
+        margin-top: 0;
+        color: #666;
+    }
+</style>
+
+<div class="audit-container">
+    <h1>WSU Site Audit Tool</h1>
+
+    <form method="post" class="audit-form">
+        <h2>Audit Configuration</h2>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Config.SiteName">Site Name *</label>
+                <input asp-for="Config.SiteName" placeholder="e.g., Cougar Card, Handbook" />
+                <span asp-validation-for="Config.SiteName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Config.SourceUrl">Source URL (Production) *</label>
+                <input asp-for="Config.SourceUrl" type="text" placeholder="https://source.wsu.edu" />
+                <span asp-validation-for="Config.SourceUrl" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label asp-for="Config.TestUrl">Test URL *</label>
+                <select asp-for="Config.TestUrl">
+                    <option value="">-- Select Test Environment --</option>
+                    <option value="https://wdev3-testing.asis.wsu.edu/">WDEV3 Testing</option>
+                    <option value="http://asis-wdev1.ad.wsu.edu/">WDEV1</option>
+                    <option value="https://w2-testing.asis.wsu.edu/">W2 Testing</option>
+                    <option value="https://w3-testing.asis.wsu.edu/">W3 Testing</option>
+                    <option value="https://stepone.wsu.edu/">StepOne</option>
+                    <option value="https://dev.cub.wsu.edu/">CUB Dev</option>
+                    <option value="https://u7.dev.urec.wsu.edu/">UREC Dev</option>
+                    <option value="https://localhost:7019/">Localhost:7019</option>
+                </select>
+                <span asp-validation-for="Config.TestUrl" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Config.TestScope">Test Scope</label>
+                <select asp-for="Config.TestScope">
+                    <option value="ask">Ask</option>
+                    <option value="single">Single URL Only</option>
+                    <option value="instance">Include Sibling Sites</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="advanced-options">
+            <h3>Advanced Options</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Config.MaxPaths">Max Paths (0 = all)</label>
+                    <input asp-for="Config.MaxPaths" type="number" min="0" value="0" />
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Config.MaxTabs">Max Concurrent Tabs</label>
+                    <input asp-for="Config.MaxTabs" type="number" min="1" max="20" value="5" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Config.TestAllowlist">Test Allowlist (comma-separated labels or URLs)</label>
+                <input asp-for="Config.TestAllowlist" placeholder="cougarcard, handbook" />
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Config.TestAllowlistFile">Allowlist File Path</label>
+                <input asp-for="Config.TestAllowlistFile" placeholder="path/to/allowlist.txt" />
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Config.RedirectOverridePaths">Redirect Override Paths (comma-separated)</label>
+                <input asp-for="Config.RedirectOverridePaths" placeholder="/path1, /path2" />
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button type="submit" asp-page-handler="StartAudit" class="btn-primary">
+                <span id="btn-text">Start Audit</span>
+            </button>
+        </div>
+    </form>
+
+    @if (Model.StatusMessages.Count > 0)
+    {
+        <div class="status-box">
+            @foreach (var message in Model.StatusMessages)
+            {
+                @if (message.StartsWith("✓"))
+                {
+                    <div class="status-message success">@message</div>
+                }
+                else if (message.StartsWith("✗"))
+                {
+                    <div class="status-message error">@message</div>
+                }
+                else
+                {
+                    <div class="status-message info">@message</div>
+                }
+            }
+        </div>
+    }
+
+    @if (Model.LastSummary != null)
+    {
+        <div class="results-summary">
+            <div class="result-card pass">
+                <h3>PASS</h3>
+                <div class="result-value">@Model.LastSummary.PassCount</div>
+            </div>
+            <div class="result-card fail">
+                <h3>FAIL</h3>
+                <div class="result-value">@Model.LastSummary.FailCount</div>
+            </div>
+            <div class="result-card review">
+                <h3>REVIEW</h3>
+                <div class="result-value">@Model.LastSummary.ReviewCount</div>
+            </div>
+            <div class="result-card readiness">
+                <h3>Release Readiness</h3>
+                <div class="result-value">
+                    @if (Model.LastSummary.Readiness.GoCount > 0)
+                    {
+                        <span>GO</span>
+                    }
+                    else if (Model.LastSummary.Readiness.ConditionalGoCount > 0)
+                    {
+                        <span>CONDITIONAL</span>
+                    }
+                    else
+                    {
+                        <span>NO GO</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.LastSummary.HtmlReportPath))
+        {
+            <div class="report-links">
+                <h2>Generated Reports</h2>
+                <a href="/reports/@Path.GetFileName(Model.LastSummary.HtmlReportPath)" class="report-link" target="_blank">
+                    📊 View HTML Report
+                </a>
+                @if (!string.IsNullOrEmpty(Model.LastSummary.MainCsvPath))
+                {
+                    <a href="/reports/@Path.GetFileName(Model.LastSummary.MainCsvPath)" class="report-link" download>
+                        📥 Download CSV
+                    </a>
+                }
+                @if (!string.IsNullOrEmpty(Model.LastSummary.XlsxPath))
+                {
+                    <a href="/reports/@Path.GetFileName(Model.LastSummary.XlsxPath)" class="report-link" download>
+                        📥 Download Excel
+                    </a>
+                }
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

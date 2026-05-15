@@ -1,0 +1,84 @@
+// Add this to your Startup.cs or Program.cs in the ConfigureServices method
+
+// Install NuGet packages first:
+// dotnet add package HtmlAgilityPack
+// dotnet add package EPPlus
+
+// In Program.cs (for .NET 6+):
+// ============================================
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add Razor Pages
+builder.Services.AddRazorPages();
+
+// Register Audit Services
+builder.Services.AddScoped<UrlUtilityService>();
+builder.Services.AddScoped<AuditAnalysisService>();
+builder.Services.AddScoped<PageComparisonService>();
+builder.Services.AddScoped<ReportGenerationService>();
+builder.Services.AddScoped<AuditService>();
+
+// Add HttpClient for URL operations
+builder.Services.AddHttpClient();
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapRazorPages();
+
+app.Run();
+
+// ============================================
+// In Startup.cs (for .NET Framework / older versions):
+// ============================================
+
+/*
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddRazorPages();
+    services.AddHttpClient();
+    
+    // Register services
+    services.AddScoped<UrlUtilityService>();
+    services.AddScoped<AuditAnalysisService>();
+    services.AddScoped<PageComparisonService>();
+    services.AddScoped<ReportGenerationService>();
+    services.AddScoped<AuditService>();
+}
+
+public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+{
+    if (env.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage();
+    }
+    else
+    {
+        app.UseExceptionHandler("/Error");
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+    app.UseRouting();
+    app.UseAuthorization();
+
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapRazorPages();
+    });
+}
+*/
