@@ -11,10 +11,13 @@ namespace AuditApp.Models
         public string SiteName { get; set; }
         public string SourceUrl { get; set; }
         public string TestUrl { get; set; }
+        public bool SourceIsSubdomain { get; set; }
         public string TestSlug { get; set; } = "/";
         public string TestScope { get; set; } = "ask"; // ask, single, instance
         public string TestAllowlist { get; set; } = "";
         public string TestAllowlistFile { get; set; } = "";
+        public string BatchSiteMappings { get; set; } = "";
+        public string BatchSiteMappingsFile { get; set; } = "";
         public string RedirectOverridePaths { get; set; } = "";
         public int MaxTabs { get; set; } = 5;
         public int MaxPaths { get; set; } = 0; // 0 = all paths
@@ -105,6 +108,41 @@ namespace AuditApp.Models
         public List<AuditResult> QueueA { get; set; } = new(); // Fix on test site
         public List<AuditResult> QueueB { get; set; } = new(); // Source/shared instability
         public List<FailureCluster> Clusters { get; set; } = new();
+    }
+
+    public class ReportHistoryEntry
+    {
+        public string SiteName { get; set; }
+        public string AuditFolder { get; set; }
+        public string HtmlFilePath { get; set; }
+        public string HtmlFileName { get; set; }
+        public string HtmlUrl { get; set; }
+        public string ExecutiveHtmlPath { get; set; }
+        public string ExecutiveHtmlUrl { get; set; }
+        public string MainCsvPath { get; set; }
+        public string MainCsvUrl { get; set; }
+        public string XlsxPath { get; set; }
+        public string XlsxUrl { get; set; }
+        public string TimestampToken { get; set; }
+        public DateTime GeneratedAt { get; set; }
+        public int PassCount { get; set; }
+        public int SoftPassCount { get; set; }
+        public int ReviewCount { get; set; }
+        public int FailCount { get; set; }
+        public int RedirectCount { get; set; }
+
+        public string GeneratedAtDisplay => GeneratedAt == default
+            ? string.Empty
+            : GeneratedAt.ToString("MMM d, yyyy h:mm tt");
+    }
+
+    public class ReportHistoryComparison
+    {
+        public int PassDelta { get; set; }
+        public int ReviewDelta { get; set; }
+        public int FailDelta { get; set; }
+
+        public bool HasChanges => PassDelta != 0 || ReviewDelta != 0 || FailDelta != 0;
     }
 
     /// <summary>

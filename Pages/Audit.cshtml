@@ -2,32 +2,275 @@
 @model AuditApp.Pages.AuditModel
 @{
     ViewData["Title"] = "Site Audit";
+    var hasReports = Model.LatestReport != null;
 }
 
 <style>
-    .audit-container {
-        max-width: 1200px;
+    :root {
+        --wsu-crimson: #981e32;
+        --wsu-crimson-deep: #7f182b;
+        --wsu-dark: #2a3038;
+        --wsu-navy: #23364a;
+        --wsu-gold: #d8b56a;
+        --wsu-sand: #f4f1ed;
+        --wsu-cream: #fbf8f3;
+        --wsu-border: #dbd1c7;
+        --wsu-ink: #1f2329;
+        --wsu-muted: #5c6773;
+        --wsu-success: #1f7a3a;
+        --wsu-warning: #a56609;
+        --wsu-error: #b11e3a;
+        --wsu-info: #355d8c;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        color: var(--wsu-ink);
+        background:
+            radial-gradient(circle at top right, rgba(152, 30, 50, 0.14), transparent 24%),
+            linear-gradient(180deg, #f2ebe3 0, #faf7f2 180px, #ffffff 420px);
+        font-family: Segoe UI, Tahoma, sans-serif;
+    }
+
+    .wsu-g-header__wrapper {
+        background: #ffffff;
+        border-bottom: 1px solid rgba(31, 35, 41, 0.12);
+        box-shadow: 0 14px 32px rgba(31, 35, 41, 0.14);
+    }
+
+    .wsu-g-header {
+        max-width: 1280px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 18px 20px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .wsu-g-header__logo-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        color: #4f5963;
+        text-decoration: none;
+        min-width: 0;
+    }
+
+    .wsu-g-header__logo-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 78px;
+        height: 78px;
+        padding: 10px;
+        border-radius: 20px;
+        background: rgba(152, 30, 50, 0.08);
+        color: var(--wsu-crimson);
+        box-shadow: inset 0 0 0 1px rgba(152, 30, 50, 0.14);
+    }
+
+    .wsu-g-header__logo-svg {
+        width: 54px;
+        height: 54px;
+        display: block;
+    }
+
+    .wsu-g-header__logo-svg .st0 {
+        fill: currentColor;
+    }
+
+    .wsu-g-header__logo-text {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .wsu-g-header__logo-kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 11px;
+        opacity: 0.78;
+    }
+
+    .wsu-g-header__logo-title {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.05;
+    }
+
+    .wsu-g-header__logo-subtitle {
+        font-size: 13px;
+        color: #5c6773;
+        max-width: 44ch;
+    }
+
+    .sticky {
+        display: flex;
+        align-items: center;
+    }
+
+    .stickyHoverButton {
+        border: 1px solid rgba(31, 35, 41, 0.16);
+        border-radius: 999px;
+        background: #ffffff;
+        color: #4f5963;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 12px 18px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .stickyHoverButton:hover {
+        background: #f6f1ec;
+        transform: translateY(-1px);
+    }
+
+    .audit-shell {
+        padding: 24px 20px 48px;
+    }
+
+    .audit-container {
+        max-width: 1280px;
+        margin: 0 auto;
+    }
+
+    .audit-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+        gap: 22px;
+        margin-bottom: 24px;
+    }
+
+    .hero-card,
+    .hero-side,
+    .audit-form,
+    .status-panel,
+    .report-card {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid var(--wsu-border);
+        border-radius: 20px;
+        box-shadow: 0 20px 44px rgba(31, 35, 41, 0.08);
+    }
+
+    .hero-card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 243, 236, 0.98));
+        color: var(--wsu-ink);
+        padding: 28px;
+        position: relative;
+        overflow: hidden;
+        border-top: 6px solid var(--wsu-crimson);
+    }
+
+    .hero-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -90px -150px auto;
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(216, 181, 106, 0.34), transparent 68%);
+    }
+
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(152, 30, 50, 0.08);
+        color: var(--wsu-crimson);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 18px;
+    }
+
+    .hero-title {
+        margin: 0;
+        font-size: 38px;
+        line-height: 1.02;
+        color: var(--wsu-navy);
+        max-width: 12ch;
+    }
+
+    .hero-title strong {
+        color: var(--wsu-crimson);
+    }
+
+    .hero-copy {
+        margin: 16px 0 0;
+        color: var(--wsu-muted);
+        font-size: 16px;
+        line-height: 1.7;
+        max-width: 60ch;
+    }
+
+    .hero-side {
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,245,239,0.98));
+    }
+
+    .hero-side h2,
+    .audit-form h2,
+    .status-panel h2,
+    .reports-heading h2 {
+        margin: 0;
+        font-size: 24px;
+    }
+
+    .hero-side p,
+    .reports-heading p,
+    .report-meta,
+    .report-empty,
+    .notice-copy {
+        color: var(--wsu-muted);
+    }
+
+    .notice-card {
+        border-radius: 16px;
+        padding: 16px;
+        background: linear-gradient(180deg, rgba(152,30,50,0.08), rgba(152,30,50,0.02));
+        border: 1px solid rgba(152,30,50,0.14);
+    }
+
+    .notice-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(152,30,50,0.12);
+        color: var(--wsu-crimson);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
     }
 
     .audit-form {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
+        padding: 28px;
+        margin-bottom: 22px;
     }
 
     .form-group {
-        margin-bottom: 15px;
+        margin-bottom: 18px;
     }
 
     label {
         display: block;
-        font-weight: bold;
-        margin-bottom: 5px;
-        color: #333;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--wsu-ink);
     }
 
     input[type="text"],
@@ -35,10 +278,12 @@
     select,
     textarea {
         width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 14px;
+        padding: 14px 16px;
+        border: 1px solid var(--wsu-border);
+        border-radius: 14px;
+        font-size: 15px;
+        background: #fffdfb;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     }
 
     input[type="text"]:focus,
@@ -46,351 +291,899 @@
     select:focus,
     textarea:focus {
         outline: none;
-        border-color: #4CAF50;
-        box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        border-color: var(--wsu-crimson);
+        box-shadow: 0 0 0 4px rgba(152, 30, 50, 0.12);
+        transform: translateY(-1px);
     }
 
     .form-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        gap: 18px;
     }
 
-    .button-group {
+    .run-controls {
         display: flex;
-        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
         margin-top: 20px;
     }
 
-    button {
-        padding: 12px 24px;
-        font-size: 16px;
+    .run-button {
+        min-width: 190px;
+        padding: 15px 24px;
+        font-size: 15px;
         border: none;
-        border-radius: 4px;
+        border-radius: 999px;
         cursor: pointer;
-        font-weight: bold;
-        transition: background-color 0.3s;
+        font-weight: 700;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
     }
 
-    .btn-primary {
-        background-color: #4CAF50;
+    .run-button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 30px rgba(31,35,41,0.12);
+    }
+
+    .run-button:disabled {
+        cursor: wait;
+        opacity: 0.92;
+    }
+
+    .run-button.ready {
+        background: linear-gradient(135deg, var(--wsu-crimson), #b3293f);
         color: white;
     }
 
-    .btn-primary:hover:not(:disabled) {
-        background-color: #45a049;
-    }
-
-    .btn-primary:disabled {
-        background-color: #cccccc;
-        cursor: not-allowed;
-    }
-
-    .btn-secondary {
-        background-color: #666;
+    .run-button.running {
+        background: linear-gradient(135deg, var(--wsu-dark), #58606a);
         color: white;
     }
 
-    .btn-secondary:hover {
-        background-color: #555;
+    .run-button.complete {
+        background: linear-gradient(135deg, var(--wsu-success), #279249);
+        color: white;
+    }
+
+    .run-button.error {
+        background: linear-gradient(135deg, var(--wsu-error), #c53b56);
+        color: white;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(53, 93, 140, 0.1);
+        color: var(--wsu-info);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .status-panel {
+        padding: 24px;
+        margin-bottom: 22px;
     }
 
     .status-box {
-        background: #f0f0f0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 15px;
-        margin: 20px 0;
-        min-height: 200px;
-        max-height: 400px;
+        background: linear-gradient(180deg, #faf7f4, #f6f1ec);
+        border: 1px solid var(--wsu-border);
+        border-radius: 16px;
+        padding: 16px;
+        margin-top: 18px;
+        min-height: 180px;
+        max-height: 420px;
         overflow-y: auto;
-        font-family: monospace;
+        font-family: Consolas, monospace;
         font-size: 12px;
     }
 
     .status-message {
-        margin: 5px 0;
-        padding: 5px;
-        border-radius: 3px;
+        margin: 0 0 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid transparent;
     }
 
     .status-message.success {
-        background: #d4edda;
-        color: #155724;
+        background: rgba(31,122,58,0.08);
+        color: var(--wsu-success);
+        border-color: rgba(31,122,58,0.16);
     }
 
     .status-message.error {
-        background: #f8d7da;
-        color: #721c24;
+        background: rgba(177,30,58,0.08);
+        color: var(--wsu-error);
+        border-color: rgba(177,30,58,0.16);
     }
 
     .status-message.info {
-        background: #d1ecf1;
-        color: #0c5460;
+        background: rgba(53,93,140,0.08);
+        color: var(--wsu-info);
+        border-color: rgba(53,93,140,0.16);
     }
 
-    .results-summary {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        margin: 20px 0;
+    .field-note,
+    .input-help,
+    .section-note {
+        font-size: 13px;
+        color: var(--wsu-muted);
+        margin-top: 8px;
     }
 
-    .result-card {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-
-    .result-card h3 {
-        margin: 0;
-        font-size: 14px;
-        color: #666;
-    }
-
-    .result-value {
-        font-size: 32px;
-        font-weight: bold;
-        margin: 10px 0 0 0;
-    }
-
-    .result-card.pass .result-value {
-        color: #4CAF50;
-    }
-
-    .result-card.fail .result-value {
-        color: #f44336;
-    }
-
-    .result-card.review .result-value {
-        color: #ff9800;
-    }
-
-    .result-card.readiness .result-value {
-        color: #2196F3;
-    }
-
-    .report-links {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .report-links h2 {
-        margin-top: 0;
-    }
-
-    .report-link {
-        display: inline-block;
-        margin: 10px 10px 10px 0;
-        padding: 10px 20px;
-        background: #2196F3;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-    }
-
-    .report-link:hover {
-        background: #0b7dda;
-    }
-
-    .spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #4CAF50;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-        vertical-align: middle;
-        margin-right: 10px;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    .custom-url-group {
+        margin-top: 12px;
     }
 
     .advanced-options {
-        background: #f9f9f9;
-        padding: 15px;
-        border-radius: 4px;
-        margin-top: 15px;
+        background: linear-gradient(180deg, #f9f5f1, #fffdfb);
+        padding: 18px;
+        border-radius: 18px;
+        margin-top: 12px;
+        border: 1px solid var(--wsu-border);
     }
 
     .advanced-options h3 {
         margin-top: 0;
-        color: #666;
+        margin-bottom: 10px;
+        font-size: 18px;
+    }
+
+    .reports-heading {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: end;
+        margin-bottom: 16px;
+    }
+
+    .reports-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+        gap: 18px;
+    }
+
+    .report-card {
+        padding: 22px;
+        min-height: 230px;
+    }
+
+    .report-card h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+    }
+
+    .report-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 12px 18px;
+        background: linear-gradient(135deg, var(--wsu-crimson), #b3293f);
+        color: white;
+        text-decoration: none;
+        border-radius: 999px;
+        font-weight: 700;
+    }
+
+    .report-link.secondary {
+        background: linear-gradient(135deg, var(--wsu-dark), #525963);
+    }
+
+    .report-link:hover {
+        color: white;
+    }
+
+    .report-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .report-stat {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: #f6f1ec;
+        border: 1px solid var(--wsu-border);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--wsu-muted);
+    }
+
+    .report-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+    }
+
+    .delta-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .delta-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #faf7f4;
+        border: 1px solid #eee3d8;
+    }
+
+    .delta-value.positive {
+        color: var(--wsu-success);
+    }
+
+    .delta-value.negative {
+        color: var(--wsu-error);
+    }
+
+    .delta-value.neutral {
+        color: var(--wsu-muted);
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid white;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        animation: spin 1s linear infinite;
+        display: none;
+    }
+
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .is-running .spinner {
+        display: inline-block;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .text-danger {
+        color: var(--wsu-error);
+        font-size: 13px;
+    }
+
+    @@media (max-width: 1024px) {
+        .audit-hero,
+        .reports-grid,
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .wsu-g-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+    }
+
+    @@media (max-width: 640px) {
+        .audit-shell {
+            padding: 18px 14px 34px;
+        }
+
+        .hero-card,
+        .hero-side,
+        .audit-form,
+        .status-panel,
+        .report-card {
+            border-radius: 18px;
+        }
+
+        .wsu-g-header__logo-link {
+            align-items: flex-start;
+        }
+
+        .wsu-g-header__logo-title {
+            font-size: 24px;
+        }
+
+        .hero-title {
+            font-size: 32px;
+            max-width: none;
+        }
+
+        .reports-heading {
+            display: block;
+        }
     }
 </style>
 
-<div class="audit-container">
-    <h1>WSU Site Audit Tool</h1>
+<div class="wsu-g-header__wrapper Light">
+    <header aria-label="wsu global header" class="wsu-g-header">
+        <a class="wsu-g-header__logo-link" href="https://studentaffairs.wsu.edu/" target="_blank" rel="noreferrer">
+            <span class="wsu-g-header__logo-icon" style="min-width: 24px; min-height: 24px;">
+                <svg role="img" aria-labelledby="wsuLogoTitle wsuLogoDesc" class="wsu-g-header__logo-svg" enable-background="new 0 0 70.2 69.6" version="1.1" viewBox="0 0 70.2 69.6" xml:space="preserve" xmlns="http://www.w3.org/2000/svg">
+                    <title id="wsuLogoTitle">WSU Cougar Head Logo</title>
+                    <desc id="wsuLogoDesc">Originally created in 1936 by Randall Johnson, the Cougar Head remains a unique and distinguished part of the WSU identity.</desc>
+                    <path class="st0" d="m42.8 69.6s3.6-1.5 5.5-7.4c1 2.3 1.5 4.8 1.3 7.3-2.3 0.1-4.5 0.2-6.8 0.1zm14.9-11.8c-10.4 1.4-12.2-20.3-12.2-20.3s3.5 11.1 10.9 10.7c7.7-0.4 5.5-12.2 5.5-12.2s7.5 20.2-4.2 21.8zm-47.7-5c-3.3 1-6.6 1.8-10 2.4 0 0 5.9-4.5 10.3-18.3l4.3 3.9-0.8 2.6c1.1 1.5 1.9 3.1 2.5 4.9 1.6-3.6 1.5-7.7-0.3-11.2l-0.5 1.6-1.7-1.5-2.8-2.7c1.2-3.6 3-7 5.3-10.1l0.4 0.4 3.3 3.8-1 1.7c1.5 1.7 2.9 3.4 4.2 5.3 0.6-3.4 0.4-6.8-0.4-10.1l-1.5 1.4-3.6-4.2c4.5-4.7 10-8.2 16.2-10.3-0.4 0.4-0.7 0.8-1 1.3-2 2.9-4.1 8.1-2.4 16.4 0.3 1.3 0.7 3.2 1.1 5.1 0.9 3.8 1.9 8.2 2.2 10.9 0.7 5.7 0.1 9.4-1.8 11.4-1.3 1.4-3.5 2-6.4 1.9v-1.4c0-2.4-0.3-4.8-0.8-7.2l-0.8-2.7-1.2 2.6c-1.9 4.1-8.6 14.1-17.2 16.1 2.6-4.2 4.1-9 4.4-14zm25.4 16.4h-0.5-0.1-0.3c-0.5 0-0.8-0.1-1.2-0.1-0.7-0.1-1.6-0.2-2.6-0.4-6.4-1.1-12.9-1.7-19.4-2 6.2-3.6 10.4-9.9 12-12.5 0.2 1.3 0.3 2.5 0.3 3.8 0 0.8 0 1.6-0.1 2.2l-0.1 1.1 1.1 0.1c0.7 0.1 1.3 0.1 1.9 0.1 3.3 0 5.7-0.8 7.3-2.5 2.4-2.5 3.1-6.7 2.3-13.1-0.4-2.9-1.4-7.4-2.3-11.1-0.5-2-0.9-3.8-1.1-5-1.5-7.6 0.3-12.3 2.1-14.8 1.3-1.9 3.2-3.4 5.5-4.2h0.1l3.3-10.8h1.1l-2.3 10.3c0.7-0.1 1.2-0.2 1.7-0.3l3-9.5h1.1l-2 9.2c2.9-0.4 6.1-0.7 10.3-1 0.8 0.4 1.4 1.1 1.8 1.9l9.8-3 0.4 1.1-9.5 3.7c0.1 0.2 0.2 0.4 0.2 0.6l10.3-1.3 0.2 1.1-10 2c0 0.2 0.1 0.4 0.1 0.6l10.4 0.3v1.1l-10.2 0.4c0 1.2-0.2 2.4-0.5 3.6 0.6 2.1 0.7 4.3 0.3 6.5-1.7-3.9-3-5.1-3-5.1-1.4-0.7-2.9-1-4.5-1-2.5 0-4.8 1.1-6.4 2.9-2.3 2.6-3.5 6-3.3 9.5 0.2 2.4 0.7 5.1 1.4 8.6 0.7 3.6 1.6 8.1 2.3 13.5 0.6 4.1-0.1 7.3-1.8 9.7-1.6 2.1-4 3.4-6.5 3.8h-0.1-0.2-0.1-2.2zm10.4-51.5c-2.1-0.1-4.2 0.4-6 1.3-1.5 1-2.5 2.7-2.6 4.5-0.1 0.6-0.1 1.2 0 1.8 0.8-1.5 2-2.8 3.3-3.9 2.4-1.5 5.1-2.3 7.9-2.4h0.9 0.3c0.4 0 0.7-0.1 0.8-0.2 0-0.1-0.1-0.3-0.4-0.4-1.3-0.5-2.7-0.8-4.2-0.7z"></path>
+                </svg>
+            </span>
+            <span class="wsu-g-header__logo-text">
+                <span class="wsu-g-header__logo-kicker">Washington State University</span>
+                <span class="wsu-g-header__logo-title">Student Affairs</span>
+                <span class="wsu-g-header__logo-subtitle">Post-Migration Audit Dashboard aligned to the Student Affairs visual direction.</span>
+            </span>
+        </a>
 
-    <form method="post" class="audit-form">
-        <h2>Audit Configuration</h2>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="Config.SiteName">Site Name *</label>
-                <input asp-for="Config.SiteName" placeholder="e.g., Cougar Card, Handbook" />
-                <span asp-validation-for="Config.SiteName" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Config.SourceUrl">Source URL (Production) *</label>
-                <input asp-for="Config.SourceUrl" type="text" placeholder="https://source.wsu.edu" />
-                <span asp-validation-for="Config.SourceUrl" class="text-danger"></span>
-            </div>
+        <div class="sticky sidebarHover">
+            <button class="stickyHoverButton" style="color:white" data-open="sidebarMessage" aria-controls="sidebarMessage" aria-haspopup="dialog" tabindex="0">Need Help Now?</button>
         </div>
+    </header>
+</div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label asp-for="Config.TestUrl">Test URL *</label>
-                <select asp-for="Config.TestUrl">
-                    <option value="">-- Select Test Environment --</option>
-                    <option value="https://wdev3-testing.asis.wsu.edu/">WDEV3 Testing</option>
-                    <option value="http://asis-wdev1.ad.wsu.edu/">WDEV1</option>
-                    <option value="https://w2-testing.asis.wsu.edu/">W2 Testing</option>
-                    <option value="https://w3-testing.asis.wsu.edu/">W3 Testing</option>
-                    <option value="https://stepone.wsu.edu/">StepOne</option>
-                    <option value="https://dev.cub.wsu.edu/">CUB Dev</option>
-                    <option value="https://u7.dev.urec.wsu.edu/">UREC Dev</option>
-                    <option value="https://localhost:7019/">Localhost:7019</option>
-                </select>
-                <span asp-validation-for="Config.TestUrl" class="text-danger"></span>
+<div class="audit-shell">
+    <div class="audit-container">
+        <section class="audit-hero">
+            <div class="hero-card">
+                <div class="hero-eyebrow">Student Affairs Style Scheme</div>
+                <h1 class="hero-title">Student-centered <strong>migration audit</strong> workflow.</h1>
+                <p class="hero-copy">Use the full-width configuration panel below to compare production and test environments, publish per-run artifacts, and reopen the latest report history for the current site without rerunning the audit.</p>
+
             </div>
 
-            <div class="form-group">
-                <label asp-for="Config.TestScope">Test Scope</label>
-                <select asp-for="Config.TestScope">
-                    <option value="ask">Ask</option>
-                    <option value="single">Single URL Only</option>
-                    <option value="instance">Include Sibling Sites</option>
-                </select>
-            </div>
-        </div>
+            <aside class="hero-side">
+                <h2>Run Guidance</h2>
+                <div class="notice-card">
+                    <div class="notice-label">Duration Notice</div>
+                    <div class="notice-copy">@Model.RunDurationNotice</div>
+                </div>
+                <div>
+                    <div class="status-pill">Report history stays site-specific</div>
+                    <p class="section-note">Changing or blurring the Site Name field refreshes only the latest and previous reports for that same site.</p>
+                </div>
+                <div>
+                    <div class="status-pill">Localhost audits supported</div>
+                    <p class="section-note">When using <strong>https://localhost:7019/</strong>, the local app must be running and reachable on port 7019.</p>
+                </div>
+            </aside>
+        </section>
 
-        <div class="advanced-options">
-            <h3>Advanced Options</h3>
+        <form method="post" class="audit-form" id="audit-form">
+            <h2>Audit Configuration</h2>
+            <p class="section-note">Source URL, Test URL, and Site Name are required for a single-site run. For multi-site instance runs, provide a Batch Site Mappings file to launch multiple site audits in one pass against the same test environment.</p>
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label asp-for="Config.MaxPaths">Max Paths (0 = all)</label>
-                    <input asp-for="Config.MaxPaths" type="number" min="0" value="0" />
+                    <label asp-for="Config.SiteName">Site Name *</label>
+                    <input asp-for="Config.SiteName" placeholder="e.g., Cougar Card, Handbook" autocomplete="off" />
+                    <div class="input-help">Used to resolve report history even when saved filenames use spaces, underscores, or hyphens.</div>
+                    <span asp-validation-for="Config.SiteName" class="text-danger"></span>
                 </div>
 
                 <div class="form-group">
-                    <label asp-for="Config.MaxTabs">Max Concurrent Tabs</label>
-                    <input asp-for="Config.MaxTabs" type="number" min="1" max="20" value="5" />
+                    <label asp-for="Config.SourceUrl">Source URL (Production) *</label>
+                    <input asp-for="Config.SourceUrl" type="text" placeholder="https://source.wsu.edu" />
+                    <span asp-validation-for="Config.SourceUrl" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Config.TestUrl">Test URL *</label>
+                    <select asp-for="Config.TestUrl" id="Config_TestUrl">
+                        <option value="">-- Select Test Environment --</option>
+                        @foreach (var url in Model.AvailableTestUrls)
+                        {
+                            <option value="@url">@url</option>
+                        }
+                        <option value="@Model.CustomTestUrlOption">Custom URL</option>
+                    </select>
+                    <div class="form-group custom-url-group @(Model.UsesCustomTestUrl ? string.Empty : "hidden")" id="custom-test-url-group">
+                        <label for="CustomTestUrl">Custom Test URL</label>
+                        <input id="CustomTestUrl" name="CustomTestUrl" type="text" value="@Model.CustomTestUrl" placeholder="https://custom-test.wsu.edu/" />
+                        <div class="input-help">Use a full URL for any environment not listed in the preset dropdown.</div>
+                    </div>
+                    <div class="input-help">Localhost audits ignore local HTTPS certificate errors but still require the app to be reachable.</div>
+                    <span asp-validation-for="Config.TestUrl" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Config.TestScope">Test Scope</label>
+                    <select asp-for="Config.TestScope">
+                        <option value="ask">Ask</option>
+                        <option value="single">Single URL Only</option>
+                        <option value="instance">Include Sibling Sites</option>
+                    </select>
                 </div>
             </div>
 
             <div class="form-group">
-                <label asp-for="Config.TestAllowlist">Test Allowlist (comma-separated labels or URLs)</label>
-                <input asp-for="Config.TestAllowlist" placeholder="cougarcard, handbook" />
+                <label class="checkbox-label" for="Config_SourceIsSubdomain">
+                    <input asp-for="Config.SourceIsSubdomain" type="checkbox" />
+                    <span>Source is a subdomain mapped under the test URL path</span>
+                </label>
+                <div class="input-help">Enable this for comparisons like a source subdomain against a test path such as <strong>dev.studentaffairs.wsu.edu/chs</strong>, so the test path prefix is preserved for every audited page.</div>
             </div>
 
-            <div class="form-group">
-                <label asp-for="Config.TestAllowlistFile">Allowlist File Path</label>
-                <input asp-for="Config.TestAllowlistFile" placeholder="path/to/allowlist.txt" />
+            <div class="advanced-options">
+                <h3>Optional Scope And Path Controls</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label asp-for="Config.MaxPaths">Max Paths (0 = all)</label>
+                        <input asp-for="Config.MaxPaths" type="number" min="0" value="0" />
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="Config.MaxTabs">Max Concurrent Tabs</label>
+                        <input asp-for="Config.MaxTabs" type="number" min="1" max="20" value="5" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Config.TestAllowlist">Test Allowlist (comma-separated labels or URLs)</label>
+                    <input asp-for="Config.TestAllowlist" placeholder="cougarcard, handbook" />
+                    <div class="input-help">Use commas between sibling site labels, or paste full URLs. Slash-separated labels are accepted, but commas are preferred.</div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Config.BatchSiteMappingsFile">Batch Site Mappings File</label>
+                    <input asp-for="Config.BatchSiteMappingsFile" placeholder="path/to/u17-batch-sites.txt" />
+                    <div class="input-help">Required for U17-style instance batches. Use one line per site in the format <strong>Site Name | Source URL | Test Path or Full Test URL</strong>. Blank lines and lines starting with <strong>#</strong> are ignored.</div>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Config.TestAllowlistFile">Allowlist File Path</label>
+                    <input asp-for="Config.TestAllowlistFile" placeholder="path/to/allowlist.txt" />
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Config.RedirectOverridePaths">Redirect Override Paths (comma-separated)</label>
+                    <input asp-for="Config.RedirectOverridePaths" placeholder="/path1, /path2" />
+                </div>
             </div>
 
-            <div class="form-group">
-                <label asp-for="Config.RedirectOverridePaths">Redirect Override Paths (comma-separated)</label>
-                <input asp-for="Config.RedirectOverridePaths" placeholder="/path1, /path2" />
+            <div class="run-controls">
+                <button type="submit" asp-page-handler="StartAudit" class="run-button @(Model.RunButtonState.ToLowerInvariant())" id="run-button" data-ready-text="Ready" data-running-text="Running" data-complete-text="Complete" data-error-text="Error">
+                    <span class="spinner" id="run-spinner"></span>
+                    <span id="btn-text">@Model.RunButtonState</span>
+                </button>
+                <div>
+                    <div class="status-pill" id="run-state-pill">@Model.RunButtonState</div>
+                    <div class="field-note">@Model.RunDurationNotice</div>
+                </div>
             </div>
-        </div>
+        </form>
 
-        <div class="button-group">
-            <button type="submit" asp-page-handler="StartAudit" class="btn-primary">
-                <span id="btn-text">Start Audit</span>
-            </button>
-        </div>
-    </form>
-
-    @if (Model.StatusMessages.Count > 0)
-    {
-        <div class="status-box">
-            @foreach (var message in Model.StatusMessages)
-            {
-                @if (message.StartsWith("✓"))
+        <section class="status-panel">
+            <h2>Audit Status</h2>
+            <p class="section-note">Run messages are kept here. If preflight stops before a new report is generated, the dashboard stays in an error state and does not relabel older results as new output.</p>
+            <div class="status-box" id="status-box">
+                @if (Model.StatusMessages.Count > 0)
                 {
-                    <div class="status-message success">@message</div>
-                }
-                else if (message.StartsWith("✗"))
-                {
-                    <div class="status-message error">@message</div>
+                    @foreach (var message in Model.StatusMessages)
+                    {
+                        if (message.StartsWith("✓"))
+                        {
+                            <div class="status-message success">@message</div>
+                        }
+                        else if (message.StartsWith("✗"))
+                        {
+                            <div class="status-message error">@message</div>
+                        }
+                        else
+                        {
+                            <div class="status-message info">@message</div>
+                        }
+                    }
                 }
                 else
                 {
-                    <div class="status-message info">@message</div>
+                    <div class="status-message info">Ready to run. Generated reports stay hidden until history exists for the current site.</div>
                 }
-            }
-        </div>
-    }
+            </div>
+        </section>
 
-    @if (Model.LastSummary != null)
-    {
-        <div class="results-summary">
-            <div class="result-card pass">
-                <h3>PASS</h3>
-                <div class="result-value">@Model.LastSummary.PassCount</div>
-            </div>
-            <div class="result-card fail">
-                <h3>FAIL</h3>
-                <div class="result-value">@Model.LastSummary.FailCount</div>
-            </div>
-            <div class="result-card review">
-                <h3>REVIEW</h3>
-                <div class="result-value">@Model.LastSummary.ReviewCount</div>
-            </div>
-            <div class="result-card readiness">
-                <h3>Release Readiness</h3>
-                <div class="result-value">
-                    @if (Model.LastSummary.Readiness.GoCount > 0)
-                    {
-                        <span>GO</span>
-                    }
-                    else if (Model.LastSummary.Readiness.ConditionalGoCount > 0)
-                    {
-                        <span>CONDITIONAL</span>
-                    }
-                    else
-                    {
-                        <span>NO GO</span>
-                    }
+        <section id="reports-section" class="@(hasReports ? string.Empty : "hidden")">
+            <div class="reports-heading">
+                <div>
+                    <h2>Generated Reports</h2>
+                    <p>Latest published report artifacts for the current site. Desktop keeps both sections in a single row and mobile stacks them vertically.</p>
                 </div>
+                <div class="status-pill" id="report-site-pill">@(hasReports ? Model.LatestReport.SiteName : "No site selected")</div>
             </div>
-        </div>
 
-        @if (!string.IsNullOrEmpty(Model.LastSummary.HtmlReportPath))
-        {
-            <div class="report-links">
-                <h2>Generated Reports</h2>
-                <a href="/reports/@Path.GetFileName(Model.LastSummary.HtmlReportPath)" class="report-link" target="_blank">
-                    📊 View HTML Report
-                </a>
-                @if (!string.IsNullOrEmpty(Model.LastSummary.MainCsvPath))
-                {
-                    <a href="/reports/@Path.GetFileName(Model.LastSummary.MainCsvPath)" class="report-link" download>
-                        📥 Download CSV
-                    </a>
-                }
-                @if (!string.IsNullOrEmpty(Model.LastSummary.XlsxPath))
-                {
-                    <a href="/reports/@Path.GetFileName(Model.LastSummary.XlsxPath)" class="report-link" download>
-                        📥 Download Excel
-                    </a>
-                }
+            <div class="reports-grid">
+                <article class="report-card" id="latest-report-card">
+                    <h3>New Report</h3>
+                    <p class="report-empty @(hasReports ? "hidden" : string.Empty)" id="latest-report-empty">No completed report is available yet for this site.</p>
+                    <div class="report-body @(hasReports ? string.Empty : "hidden")" id="latest-report-body">
+                        <div class="report-meta" id="latest-report-time">@(hasReports ? Model.LatestReport.GeneratedAtDisplay : string.Empty)</div>
+                        <div class="report-actions">
+                            <a class="report-link" id="latest-report-link" href="@(hasReports ? Model.LatestReport.HtmlUrl : "#")" target="_blank" rel="noreferrer">Open HTML Audit Report</a>
+                            <a class="report-link secondary @(hasReports && !string.IsNullOrEmpty(Model.LatestReport.ExecutiveHtmlUrl) ? string.Empty : "hidden")" id="latest-report-executive" href="@(hasReports ? Model.LatestReport.ExecutiveHtmlUrl : "#")" target="_blank" rel="noreferrer">Open Executive Preview</a>
+                            <a class="report-link secondary @(hasReports && !string.IsNullOrEmpty(Model.LatestReport.XlsxUrl) ? string.Empty : "hidden")" id="latest-report-xlsx" href="@(hasReports ? Model.LatestReport.XlsxUrl : "#")" target="_blank" rel="noreferrer">Open Excel Workbook</a>
+                        </div>
+                        <div class="report-stats" id="latest-report-stats">
+                            @if (hasReports)
+                            {
+                                <span class="report-stat">PASS @Model.LatestReport.PassCount</span>
+                                <span class="report-stat">REVIEW @Model.LatestReport.ReviewCount</span>
+                                <span class="report-stat">FAIL @Model.LatestReport.FailCount</span>
+                                <span class="report-stat">REDIRECT @Model.LatestReport.RedirectCount</span>
+                            }
+                        </div>
+                    </div>
+                </article>
+
+                <article class="report-card" id="previous-report-card">
+                    <h3>Previous Report</h3>
+                    <p class="report-empty @(Model.PreviousReport != null ? "hidden" : string.Empty)" id="previous-report-empty">No prior report history is available yet for this site.</p>
+                    <div class="report-body @(Model.PreviousReport != null ? string.Empty : "hidden")" id="previous-report-body">
+                        <div class="report-meta" id="previous-report-time">@(Model.PreviousReport?.GeneratedAtDisplay ?? string.Empty)</div>
+                        <div class="report-actions">
+                            <a class="report-link secondary" id="previous-report-link" href="@(Model.PreviousReport?.HtmlUrl ?? "#")" target="_blank" rel="noreferrer">Open Previous Report</a>
+                            <a class="report-link secondary @(Model.PreviousReport != null && !string.IsNullOrEmpty(Model.PreviousReport.ExecutiveHtmlUrl) ? string.Empty : "hidden")" id="previous-report-executive" href="@(Model.PreviousReport?.ExecutiveHtmlUrl ?? "#")" target="_blank" rel="noreferrer">Open Previous Executive Preview</a>
+                        </div>
+                        <div class="delta-list" id="previous-report-deltas">
+                            <div class="delta-item">
+                                <span>PASS vs previous</span>
+                                <span class="delta-value @(Model.PreviousComparison.PassDelta > 0 ? "positive" : Model.PreviousComparison.PassDelta < 0 ? "negative" : "neutral")">@((Model.PreviousComparison.PassDelta >= 0 ? "+" : string.Empty) + Model.PreviousComparison.PassDelta)</span>
+                            </div>
+                            <div class="delta-item">
+                                <span>REVIEW vs previous</span>
+                                <span class="delta-value @(Model.PreviousComparison.ReviewDelta < 0 ? "positive" : Model.PreviousComparison.ReviewDelta > 0 ? "negative" : "neutral")">@((Model.PreviousComparison.ReviewDelta >= 0 ? "+" : string.Empty) + Model.PreviousComparison.ReviewDelta)</span>
+                            </div>
+                            <div class="delta-item">
+                                <span>FAIL vs previous</span>
+                                <span class="delta-value @(Model.PreviousComparison.FailDelta < 0 ? "positive" : Model.PreviousComparison.FailDelta > 0 ? "negative" : "neutral")">@((Model.PreviousComparison.FailDelta >= 0 ? "+" : string.Empty) + Model.PreviousComparison.FailDelta)</span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
             </div>
-        }
-    }
+        </section>
+
+        <section id="batch-reports-section" class="hidden">
+            <div class="reports-heading">
+                <div>
+                    <h2>Batch Reports</h2>
+                    <p>Latest published report artifacts for each site included in the current batch run.</p>
+                </div>
+                <div class="status-pill" id="batch-report-count">0 sites</div>
+            </div>
+
+            <div class="reports-grid" id="batch-reports-list"></div>
+        </section>
+    </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const form = document.getElementById('audit-form');
+            const siteNameInput = document.getElementById('Config_SiteName');
+            const testUrlSelect = document.getElementById('Config_TestUrl');
+            const customTestUrlGroup = document.getElementById('custom-test-url-group');
+            const customTestUrlInput = document.getElementById('CustomTestUrl');
+            const runButton = document.getElementById('run-button');
+            const buttonText = document.getElementById('btn-text');
+            const runStatePill = document.getElementById('run-state-pill');
+            const statusBox = document.getElementById('status-box');
+            const reportsSection = document.getElementById('reports-section');
+            const reportSitePill = document.getElementById('report-site-pill');
+            const batchReportsSection = document.getElementById('batch-reports-section');
+            const batchReportsList = document.getElementById('batch-reports-list');
+            const batchReportCount = document.getElementById('batch-report-count');
+            const customTestUrlOption = '@Model.CustomTestUrlOption';
+
+            function appendStatusMessage(message, kind) {
+                const item = document.createElement('div');
+                item.className = 'status-message ' + kind;
+                item.textContent = message;
+                statusBox.appendChild(item);
+                statusBox.scrollTop = statusBox.scrollHeight;
+            }
+
+            function setRunState(state) {
+                const normalized = (state || 'Ready').toLowerCase();
+                runButton.classList.remove('ready', 'running', 'complete', 'error', 'is-running');
+                runButton.classList.add(normalized);
+
+                if (normalized === 'running') {
+                    runButton.classList.add('is-running');
+                    runButton.disabled = true;
+                } else {
+                    runButton.disabled = false;
+                }
+
+                const textMap = {
+                    ready: runButton.dataset.readyText,
+                    running: runButton.dataset.runningText,
+                    complete: runButton.dataset.completeText,
+                    error: runButton.dataset.errorText
+                };
+
+                buttonText.textContent = textMap[normalized] || state;
+                runStatePill.textContent = state;
+            }
+
+            function setLinkState(link, value, hiddenWhenEmpty) {
+                if (!link) {
+                    return;
+                }
+
+                if (value) {
+                    link.href = value;
+                    link.classList.remove('hidden');
+                } else if (hiddenWhenEmpty) {
+                    link.classList.add('hidden');
+                    link.removeAttribute('href');
+                }
+            }
+
+            function buildStatBadge(label, value) {
+                const badge = document.createElement('span');
+                badge.className = 'report-stat';
+                badge.textContent = label + ' ' + value;
+                return badge;
+            }
+
+            function buildDeltaRow(label, delta, positiveWhenNegative) {
+                const row = document.createElement('div');
+                row.className = 'delta-item';
+
+                const name = document.createElement('span');
+                name.textContent = label;
+                row.appendChild(name);
+
+                const value = document.createElement('span');
+                let tone = 'neutral';
+                if (delta !== 0) {
+                    const isPositive = positiveWhenNegative ? delta < 0 : delta > 0;
+                    tone = isPositive ? 'positive' : 'negative';
+                }
+
+                value.className = 'delta-value ' + tone;
+                value.textContent = (delta >= 0 ? '+' : '') + delta;
+                row.appendChild(value);
+                return row;
+            }
+
+            function syncCustomTestUrlVisibility() {
+                const usesCustom = testUrlSelect && testUrlSelect.value === customTestUrlOption;
+                customTestUrlGroup.classList.toggle('hidden', !usesCustom);
+                customTestUrlInput.required = usesCustom;
+
+                if (!usesCustom) {
+                    customTestUrlInput.value = '';
+                }
+            }
+
+            function renderHistory(payload) {
+                const latest = payload && payload.latest;
+                const previous = payload && payload.previous;
+                const comparison = payload && payload.comparison ? payload.comparison : { passDelta: 0, reviewDelta: 0, failDelta: 0 };
+                const hasReports = !!(payload && payload.hasReports && latest);
+
+                reportsSection.classList.toggle('hidden', !hasReports);
+                reportSitePill.textContent = hasReports ? latest.siteName : 'No site selected';
+
+                const latestBody = document.getElementById('latest-report-body');
+                const latestEmpty = document.getElementById('latest-report-empty');
+                const latestTime = document.getElementById('latest-report-time');
+                const latestStats = document.getElementById('latest-report-stats');
+                setLinkState(document.getElementById('latest-report-link'), hasReports ? latest.htmlUrl : null, false);
+                setLinkState(document.getElementById('latest-report-executive'), hasReports ? latest.executiveHtmlUrl : null, true);
+                setLinkState(document.getElementById('latest-report-xlsx'), hasReports ? latest.xlsxUrl : null, true);
+
+                latestBody.classList.toggle('hidden', !hasReports);
+                latestEmpty.classList.toggle('hidden', hasReports);
+                latestTime.textContent = hasReports ? latest.generatedAtDisplay : '';
+                latestStats.innerHTML = '';
+                if (hasReports) {
+                    latestStats.appendChild(buildStatBadge('PASS', latest.passCount));
+                    latestStats.appendChild(buildStatBadge('REVIEW', latest.reviewCount));
+                    latestStats.appendChild(buildStatBadge('FAIL', latest.failCount));
+                    latestStats.appendChild(buildStatBadge('REDIRECT', latest.redirectCount));
+                }
+
+                const previousBody = document.getElementById('previous-report-body');
+                const previousEmpty = document.getElementById('previous-report-empty');
+                const previousTime = document.getElementById('previous-report-time');
+                const previousDeltas = document.getElementById('previous-report-deltas');
+                const hasPrevious = !!previous;
+
+                previousBody.classList.toggle('hidden', !hasPrevious);
+                previousEmpty.classList.toggle('hidden', hasPrevious);
+                previousTime.textContent = hasPrevious ? previous.generatedAtDisplay : '';
+                setLinkState(document.getElementById('previous-report-link'), hasPrevious ? previous.htmlUrl : null, false);
+                setLinkState(document.getElementById('previous-report-executive'), hasPrevious ? previous.executiveHtmlUrl : null, true);
+
+                previousDeltas.innerHTML = '';
+                if (hasPrevious) {
+                    previousDeltas.appendChild(buildDeltaRow('PASS vs previous', comparison.passDelta, false));
+                    previousDeltas.appendChild(buildDeltaRow('REVIEW vs previous', comparison.reviewDelta, true));
+                    previousDeltas.appendChild(buildDeltaRow('FAIL vs previous', comparison.failDelta, true));
+                }
+            }
+
+            function buildBatchReportCard(item) {
+                const card = document.createElement('article');
+                card.className = 'report-card';
+
+                const title = document.createElement('h3');
+                title.textContent = item.siteName;
+                card.appendChild(title);
+
+                const meta = document.createElement('div');
+                meta.className = 'report-meta';
+                meta.textContent = item.generatedAtDisplay || 'No timestamp available';
+                card.appendChild(meta);
+
+                const actions = document.createElement('div');
+                actions.className = 'report-actions';
+
+                if (item.htmlUrl) {
+                    const htmlLink = document.createElement('a');
+                    htmlLink.className = 'report-link';
+                    htmlLink.href = item.htmlUrl;
+                    htmlLink.target = '_blank';
+                    htmlLink.rel = 'noreferrer';
+                    htmlLink.textContent = 'Open HTML Audit Report';
+                    actions.appendChild(htmlLink);
+                }
+
+                if (item.executiveHtmlUrl) {
+                    const executiveLink = document.createElement('a');
+                    executiveLink.className = 'report-link secondary';
+                    executiveLink.href = item.executiveHtmlUrl;
+                    executiveLink.target = '_blank';
+                    executiveLink.rel = 'noreferrer';
+                    executiveLink.textContent = 'Open Executive Preview';
+                    actions.appendChild(executiveLink);
+                }
+
+                if (item.xlsxUrl) {
+                    const xlsxLink = document.createElement('a');
+                    xlsxLink.className = 'report-link secondary';
+                    xlsxLink.href = item.xlsxUrl;
+                    xlsxLink.target = '_blank';
+                    xlsxLink.rel = 'noreferrer';
+                    xlsxLink.textContent = 'Open Excel Workbook';
+                    actions.appendChild(xlsxLink);
+                }
+
+                card.appendChild(actions);
+
+                const stats = document.createElement('div');
+                stats.className = 'report-stats';
+                stats.appendChild(buildStatBadge('PASS', item.passCount || 0));
+                stats.appendChild(buildStatBadge('REVIEW', item.reviewCount || 0));
+                stats.appendChild(buildStatBadge('FAIL', item.failCount || 0));
+                stats.appendChild(buildStatBadge('REDIRECT', item.redirectCount || 0));
+                card.appendChild(stats);
+
+                if (item.error) {
+                    const error = document.createElement('p');
+                    error.className = 'report-empty';
+                    error.textContent = item.error;
+                    card.appendChild(error);
+                }
+
+                return card;
+            }
+
+            function renderBatchReports(items) {
+                const reports = Array.isArray(items) ? items : [];
+                batchReportsList.innerHTML = '';
+                batchReportsSection.classList.toggle('hidden', reports.length === 0);
+                batchReportCount.textContent = reports.length === 1 ? '1 site' : reports.length + ' sites';
+
+                reports.forEach(function (item) {
+                    batchReportsList.appendChild(buildBatchReportCard(item));
+                });
+            }
+
+            async function loadHistoryForSite() {
+                const siteName = (siteNameInput.value || '').trim();
+                if (!siteName) {
+                    renderHistory({ hasReports: false });
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`?handler=ReportHistory&siteName=${encodeURIComponent(siteName)}`);
+                    if (!response.ok) {
+                        throw new Error('Unable to load report history.');
+                    }
+
+                    renderHistory(await response.json());
+                } catch (error) {
+                    appendStatusMessage(error.message, 'error');
+                }
+            }
+
+            siteNameInput.addEventListener('blur', loadHistoryForSite);
+            siteNameInput.addEventListener('change', loadHistoryForSite);
+            testUrlSelect.addEventListener('change', syncCustomTestUrlVisibility);
+
+            if ((customTestUrlInput.value || '').trim()) {
+                testUrlSelect.value = customTestUrlOption;
+            }
+
+            syncCustomTestUrlVisibility();
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                statusBox.innerHTML = '';
+                appendStatusMessage('Audit request submitted. ' + '@Model.RunDurationNotice', 'info');
+
+                if (testUrlSelect.value === customTestUrlOption && !(customTestUrlInput.value || '').trim()) {
+                    appendStatusMessage('✗ Enter a custom Test URL before starting the audit.', 'error');
+                    setRunState('Error');
+                    window.setTimeout(function () {
+                        setRunState('Ready');
+                    }, 3200);
+                    customTestUrlInput.focus();
+                    return;
+                }
+
+                setRunState('Running');
+
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch('?handler=StartAuditApi', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const payload = await response.json();
+                    if (!response.ok || !payload.success) {
+                        throw new Error(payload.error || 'Audit failed before report generation completed.');
+                    }
+
+                    payload.messages.forEach(function (message) {
+                        const kind = message.startsWith('Error') ? 'error' : 'info';
+                        appendStatusMessage(message, kind);
+                    });
+
+                    appendStatusMessage('✓ Audit complete!', 'success');
+                    renderBatchReports(payload.batchReports || []);
+                    if (payload.batchMode) {
+                        renderHistory({ hasReports: false });
+                    } else {
+                        renderHistory(payload);
+                    }
+                    setRunState('Complete');
+                    window.setTimeout(function () {
+                        setRunState('Ready');
+                    }, 2400);
+                } catch (error) {
+                    appendStatusMessage('✗ ' + error.message, 'error');
+                    setRunState('Error');
+                    window.setTimeout(function () {
+                        setRunState('Ready');
+                    }, 3200);
+                }
+            });
+        })();
+    </script>
 }

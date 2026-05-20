@@ -29,6 +29,8 @@ namespace AuditApp.Services
             string cleaned = (path ?? "").Trim();
             if (string.IsNullOrEmpty(cleaned))
                 return "/";
+            if (string.IsNullOrEmpty(cleaned.Trim('/')))
+                return "/";
             return "/" + cleaned.Trim('/') + "/";
         }
 
@@ -37,7 +39,32 @@ namespace AuditApp.Services
         /// </summary>
         public string NormalizeSiteBase(string url)
         {
-            return (url ?? "").TrimEnd('/');
+            var trimmed = (url ?? "").Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return string.Empty;
+
+            trimmed = trimmed.TrimEnd('/');
+            if (trimmed.Contains("://", StringComparison.Ordinal))
+                return trimmed;
+
+            if (LooksLikeHostOrHostWithPath(trimmed))
+                return $"https://{trimmed}";
+
+            return trimmed;
+        }
+
+        private static bool LooksLikeHostOrHostWithPath(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            if (value.StartsWith("/", StringComparison.Ordinal))
+                return false;
+
+            var firstSegment = value.Split('/')[0];
+            return firstSegment.Contains('.', StringComparison.Ordinal)
+                || firstSegment.Contains(':', StringComparison.Ordinal)
+                || string.Equals(firstSegment, "localhost", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -78,11 +105,14 @@ namespace AuditApp.Services
         /// <summary>
         /// Determine if test base path should be prefixed (i.e., it's a site-root slug, not a section)
         /// </summary>
-        public bool ShouldPrefixTestBasePath(string basePath, string sourceBase)
+        public bool ShouldPrefixTestBasePath(string basePath, string sourceBase, bool forcePrefixBasePath = false)
         {
             string cleaned = (basePath ?? "").Trim('/').ToLower();
             if (string.IsNullOrEmpty(cleaned))
                 return false;
+
+            if (forcePrefixBasePath)
+                return true;
 
             // Multi-segment paths are sections/deep links, not site-root slugs
             if (cleaned.Contains("/"))
@@ -94,7 +124,7 @@ namespace AuditApp.Services
         /// <summary>
         /// Join test URL with path, handling section vs root logic
         /// </summary>
-        public string JoinTestUrl(string baseUrl, string path, string sourceBase = "")
+        public string JoinTestUrl(string baseUrl, string path, string sourceBase = "", bool forcePrefixBasePath = false)
         {
             baseUrl = NormalizeSiteBase(baseUrl);
             string normalizedPath = "/" + (path ?? "").TrimStart('/');
@@ -107,7 +137,7 @@ namespace AuditApp.Services
                 basePath = "";
 
             // If test_url path is a section (not source site slug), join against host root
-            if (!string.IsNullOrEmpty(basePath) && !ShouldPrefixTestBasePath(basePath, sourceBase))
+            if (!string.IsNullOrEmpty(basePath) && !ShouldPrefixTestBasePath(basePath, sourceBase, forcePrefixBasePath))
             {
                 string hostRoot = $"{uri.Scheme}://{uri.Host}";
                 if (uri.Port != 80 && uri.Port != 443 && uri.Port != -1)
@@ -127,6 +157,20 @@ namespace AuditApp.Services
 
             if (!normalizedPath.StartsWith("/"))
                 normalizedPath = "/" + normalizedPath;
+
+            return baseUrl + normalizedPath;
+        }
+
+        /// <summary>
+        /// Join source URL with a path without introducing duplicate slashes.
+        /// </summary>
+        public string JoinSourceUrl(string baseUrl, string path)
+        {
+            baseUrl = NormalizeSiteBase(baseUrl);
+            string normalizedPath = "/" + (path ?? string.Empty).TrimStart('/');
+
+            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
+                return baseUrl + normalizedPath;
 
             return baseUrl + normalizedPath;
         }
@@ -193,7 +237,7 @@ namespace AuditApp.Services
         /// <summary>
         /// Detect and auto-correct w2/wdev3 host mismatches
         /// </summary>
-        public async Task<string> MaybeCorrectTestBaseAsync(string sourceBase, string testBase, List<string> paths)
+        public async Task<string> MaybeCorrectTestBaseAsync(string sourceBase, string testBase, List<string> paths, bool forcePrefixBasePath = false)
         {
             if (string.IsNullOrEmpty(sourceBase))
                 return testBase;
@@ -224,11 +268,12 @@ namespace AuditApp.Services
             var suspectPaths = new List<string>();
             foreach (var path in samplePaths)
             {
-                var sourceUrl = !string.IsNullOrEmpty(sourceBase) ? sourceBase + path : null;
+                var sourceUrl = !string.IsNullOrEmpty(sourceBase) ? JoinSourceUrl(sourceBase, path) : null;
                 var (sourceStatus, _) = sourceUrl != null 
                     ? await ProbeUrlAsync(sourceUrl)
                     : (null, false);
-                var (testStatus, _) = await ProbeUrlAsync(testBase + path);
+                var testUrl = JoinTestUrl(testBase, path, sourceBase, forcePrefixBasePath);
+                var (testStatus, _) = await ProbeUrlAsync(testUrl);
 
                 if (sourceStatus == 200 && (testStatus == null || testStatus >= 400))
                     suspectPaths.Add(path);
@@ -248,7 +293,8 @@ namespace AuditApp.Services
             int recovered = 0;
             foreach (var path in suspectPaths)
             {
-                var (altStatus, _) = await ProbeUrlAsync(altBase + path);
+                var altUrl = JoinTestUrl(altBase, path, sourceBase, forcePrefixBasePath);
+                var (altStatus, _) = await ProbeUrlAsync(altUrl);
                 if (altStatus != null && altStatus < 400)
                     recovered++;
             }

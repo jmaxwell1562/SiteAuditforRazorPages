@@ -3,11 +3,14 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AuditApp.Models;
+using HtmlAgilityPack;
+using System.Xml.Linq;
 
 namespace AuditApp.Services
 {
@@ -67,14 +70,14 @@ namespace AuditApp.Services
                 progress?.Report($"Discovered {paths.Count} paths");
 
                 // Auto-correct host mismatch if needed
-                testBase = await _urlService.MaybeCorrectTestBaseAsync(config.SourceUrl, testBase, paths);
+                testBase = await _urlService.MaybeCorrectTestBaseAsync(config.SourceUrl, testBase, paths, config.SourceIsSubdomain);
 
                 // Discover test bases for instance scope
                 var testBases = await DiscoverTestBasesAsync(config.TestScope, testBase, config.TestAllowlist, config.TestAllowlistFile, progress);
                 progress?.Report($"Test bases: {string.Join(", ", testBases.Select(t => t.Label))}");
 
                 // Audit each path
-                var results = await AuditPathsAsync(config.SourceUrl, testBases, paths, redirectOverrides, config.MaxTabs, progress);
+                var results = await AuditPathsAsync(config.SourceUrl, testBases, paths, redirectOverrides, config.MaxTabs, config.SourceIsSubdomain, progress);
                 progress?.Report($"Audited {results.Count} paths");
 
                 // Analyze results
@@ -153,14 +156,241 @@ namespace AuditApp.Services
         /// </summary>
         private async Task<List<string>> DiscoverPathsAsync(string sourceUrl, string testBase, int maxPaths, IProgress<string> progress)
         {
-            var paths = new List<string> { "/" };
+            var discoveredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/" };
+            var normalizedSource = _urlService.NormalizeSiteBase(sourceUrl);
+            var discoveryLimit = maxPaths > 0 ? maxPaths : 5000;
 
-            // TODO: Implement sitemap parsing
-            // For now, return basic paths
+            if (string.IsNullOrWhiteSpace(normalizedSource))
+                return discoveredPaths.ToList();
+
+            progress?.Report("Discovering paths from sitemap...");
+            var sitemapCount = await DiscoverPathsFromSitemapAsync(normalizedSource, discoveredPaths, discoveryLimit, progress);
+
+            if (sitemapCount <= 1)
+            {
+                progress?.Report("Sitemap did not yield enough paths; crawling source links...");
+                await CrawlSourcePathsAsync(normalizedSource, discoveredPaths, discoveryLimit, progress);
+            }
+
+            var orderedPaths = discoveredPaths
+                .Select(_urlService.NormalizePath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(path => path == "/" ? 0 : 1)
+                .ThenBy(path => path.Length)
+                .ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             if (maxPaths > 0)
-                paths = paths.Take(maxPaths).ToList();
+                orderedPaths = orderedPaths.Take(maxPaths).ToList();
 
-            return await Task.FromResult(paths);
+            return orderedPaths;
+        }
+
+        private async Task<int> DiscoverPathsFromSitemapAsync(string sourceBase, HashSet<string> paths, int limit, IProgress<string> progress)
+        {
+            var visitedSitemaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var candidates = new[]
+            {
+                _urlService.JoinSourceUrl(sourceBase, "/sitemap"),
+                _urlService.JoinSourceUrl(sourceBase, "/sitemap.xml"),
+                _urlService.JoinSourceUrl(sourceBase, "/sitemap_index.xml")
+            };
+
+            foreach (var sitemapUrl in candidates)
+            {
+                await ReadSitemapRecursiveAsync(sitemapUrl, sourceBase, paths, visitedSitemaps, limit, progress);
+                if (paths.Count >= limit)
+                    break;
+            }
+
+            return paths.Count;
+        }
+
+        private async Task ReadSitemapRecursiveAsync(
+            string sitemapUrl,
+            string sourceBase,
+            HashSet<string> paths,
+            HashSet<string> visitedSitemaps,
+            int limit,
+            IProgress<string> progress)
+        {
+            if (string.IsNullOrWhiteSpace(sitemapUrl)
+                || paths.Count >= limit
+                || !visitedSitemaps.Add(sitemapUrl))
+            {
+                return;
+            }
+
+            var content = await FetchTextAsync(sitemapUrl);
+            if (string.IsNullOrWhiteSpace(content))
+                return;
+
+            try
+            {
+                var document = XDocument.Parse(content);
+                var rootName = document.Root?.Name.LocalName;
+                if (string.Equals(rootName, "sitemapindex", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var loc in document.Descendants().Where(node => node.Name.LocalName == "loc"))
+                    {
+                        await ReadSitemapRecursiveAsync(loc.Value.Trim(), sourceBase, paths, visitedSitemaps, limit, progress);
+                        if (paths.Count >= limit)
+                            break;
+                    }
+
+                    return;
+                }
+
+                if (!string.Equals(rootName, "urlset", StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                foreach (var loc in document.Descendants().Where(node => node.Name.LocalName == "loc"))
+                {
+                    if (TryNormalizeSourcePath(sourceBase, loc.Value, out var path))
+                    {
+                        paths.Add(path);
+                        if (paths.Count >= limit)
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                progress?.Report($"Sitemap parse warning: {ex.Message}");
+            }
+        }
+
+        private async Task CrawlSourcePathsAsync(string sourceBase, HashSet<string> paths, int limit, IProgress<string> progress)
+        {
+            var visitedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var pendingPaths = new Queue<string>();
+            pendingPaths.Enqueue("/");
+
+            while (pendingPaths.Count > 0 && paths.Count < limit)
+            {
+                var currentPath = pendingPaths.Dequeue();
+                if (!visitedPaths.Add(currentPath))
+                    continue;
+
+                var currentUrl = _urlService.JoinSourceUrl(sourceBase, currentPath);
+                var html = await FetchTextAsync(currentUrl);
+                if (string.IsNullOrWhiteSpace(html))
+                    continue;
+
+                foreach (var discoveredPath in ExtractSourceLinks(sourceBase, html))
+                {
+                    if (paths.Add(discoveredPath) && paths.Count < limit)
+                    {
+                        pendingPaths.Enqueue(discoveredPath);
+                    }
+
+                    if (paths.Count >= limit)
+                        break;
+                }
+            }
+        }
+
+        private IEnumerable<string> ExtractSourceLinks(string sourceBase, string html)
+        {
+            var results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var document = new HtmlDocument();
+            document.LoadHtml(html);
+
+            foreach (var link in document.DocumentNode.SelectNodes("//a[@href]") ?? Enumerable.Empty<HtmlNode>())
+            {
+                var href = link.GetAttributeValue("href", string.Empty)?.Trim();
+                if (string.IsNullOrWhiteSpace(href)
+                    || href.StartsWith("#", StringComparison.Ordinal)
+                    || href.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
+                    || href.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase)
+                    || href.StartsWith("tel:", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (TryNormalizeSourcePath(sourceBase, href, out var path) && !LooksLikeBinaryAsset(path))
+                {
+                    results.Add(path);
+                }
+            }
+
+            return results;
+        }
+
+        private bool TryNormalizeSourcePath(string sourceBase, string candidateUrl, out string path)
+        {
+            path = string.Empty;
+            if (string.IsNullOrWhiteSpace(candidateUrl)
+                || !Uri.TryCreate(sourceBase, UriKind.Absolute, out var sourceUri))
+            {
+                return false;
+            }
+
+            Uri resolvedUri;
+            if (Uri.TryCreate(candidateUrl, UriKind.Absolute, out var absoluteUri))
+            {
+                resolvedUri = absoluteUri;
+            }
+            else if (!Uri.TryCreate(sourceUri, candidateUrl, out resolvedUri))
+            {
+                return false;
+            }
+
+            if (!string.Equals(resolvedUri.Host, sourceUri.Host, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var scopedBasePath = sourceUri.AbsolutePath.TrimEnd('/');
+            var resolvedPath = resolvedUri.AbsolutePath;
+
+            if (!string.IsNullOrEmpty(scopedBasePath) && scopedBasePath != "/")
+            {
+                if (string.Equals(resolvedPath, scopedBasePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    path = "/";
+                    return true;
+                }
+
+                if (!resolvedPath.StartsWith(scopedBasePath + "/", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                resolvedPath = resolvedPath.Substring(scopedBasePath.Length);
+            }
+
+            path = _urlService.NormalizePath(resolvedPath);
+            return true;
+        }
+
+        private static bool LooksLikeBinaryAsset(string path)
+        {
+            var extension = Path.GetExtension(path);
+            if (string.IsNullOrWhiteSpace(extension))
+                return false;
+
+            var blockedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".pdf", ".doc", ".docx",
+                ".xls", ".xlsx", ".zip", ".mp4", ".mp3", ".avi", ".mov", ".css", ".js", ".json", ".xml"
+            };
+
+            return blockedExtensions.Contains(extension);
+        }
+
+        private async Task<string> FetchTextAsync(string url)
+        {
+            try
+            {
+                using var handler = _urlService.GetHandlerForUrl(url);
+                using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+                var response = await client.GetAsync(url, HttpCompletionOption.ResponseContentRead);
+                if (!response.IsSuccessStatusCode)
+                    return string.Empty;
+
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         /// <summary>
@@ -177,9 +407,50 @@ namespace AuditApp.Services
             if (scope == "single")
                 return await Task.FromResult(testBases);
 
-            // TODO: Implement instance scope discovery
-            // Parse allowlist and filter
             var (labels, urls) = ParseAllowlist(allowlist, allowlistFile);
+            var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { seedBase };
+
+            foreach (var url in urls)
+            {
+                var normalizedUrl = _urlService.NormalizeSiteBase(url);
+                if (string.IsNullOrWhiteSpace(normalizedUrl) || !seenUrls.Add(normalizedUrl))
+                    continue;
+
+                testBases.Add(new TestBase
+                {
+                    Url = normalizedUrl,
+                    Label = _urlService.TestSiteLabel(normalizedUrl)
+                });
+            }
+
+            if (Uri.TryCreate(_urlService.NormalizeSiteBase(seedBase), UriKind.Absolute, out var seedUri))
+            {
+                var hostRoot = $"{seedUri.Scheme}://{seedUri.Host}";
+                if (seedUri.Port != 80 && seedUri.Port != 443 && seedUri.Port != -1)
+                    hostRoot += $":{seedUri.Port}";
+
+                foreach (var label in labels)
+                {
+                    var cleanedLabel = label.Trim('/');
+                    if (string.IsNullOrWhiteSpace(cleanedLabel))
+                        continue;
+
+                    var siblingBase = _urlService.NormalizeSiteBase($"{hostRoot}/{cleanedLabel}");
+                    if (!seenUrls.Add(siblingBase))
+                        continue;
+
+                    testBases.Add(new TestBase
+                    {
+                        Url = siblingBase,
+                        Label = cleanedLabel
+                    });
+                }
+            }
+
+            if (scope == "instance" && testBases.Count == 1)
+            {
+                progress?.Report("Instance scope selected, but no sibling allowlist entries were supplied; auditing the selected test site only.");
+            }
 
             return await Task.FromResult(testBases);
         }
@@ -194,13 +465,9 @@ namespace AuditApp.Services
 
             if (!string.IsNullOrEmpty(raw))
             {
-                foreach (var item in raw.Split(','))
+                foreach (var item in SplitAllowlistTokens(raw))
                 {
-                    string token = item.Trim().TrimEnd('/');
-                    if (token.StartsWith("http://") || token.StartsWith("https://"))
-                        urls.Add(token.ToLower());
-                    else
-                        labels.Add(token.ToLower());
+                    AddAllowlistToken(item, labels, urls);
                 }
             }
 
@@ -214,13 +481,9 @@ namespace AuditApp.Services
                         if (string.IsNullOrEmpty(cleaned) || cleaned.StartsWith("#"))
                             continue;
 
-                        foreach (var item in cleaned.Split(','))
+                        foreach (var item in SplitAllowlistTokens(cleaned))
                         {
-                            string token = item.Trim().TrimEnd('/');
-                            if (token.StartsWith("http://") || token.StartsWith("https://"))
-                                urls.Add(token.ToLower());
-                            else
-                                labels.Add(token.ToLower());
+                            AddAllowlistToken(item, labels, urls);
                         }
                     }
                 }
@@ -233,6 +496,35 @@ namespace AuditApp.Services
             return (labels, urls);
         }
 
+        private static IEnumerable<string> SplitAllowlistTokens(string raw)
+        {
+            return (raw ?? string.Empty)
+                .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(token => token.Trim())
+                .Where(token => !string.IsNullOrWhiteSpace(token));
+        }
+
+        private static void AddAllowlistToken(string rawToken, HashSet<string> labels, HashSet<string> urls)
+        {
+            var token = (rawToken ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(token))
+                return;
+
+            if (token.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                || token.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                urls.Add(token.TrimEnd('/').ToLower());
+                return;
+            }
+
+            foreach (var label in token.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var cleanedLabel = label.Trim().Trim('/').ToLower();
+                if (!string.IsNullOrWhiteSpace(cleanedLabel))
+                    labels.Add(cleanedLabel);
+            }
+        }
+
         /// <summary>
         /// Audit all paths across all test bases
         /// </summary>
@@ -242,6 +534,7 @@ namespace AuditApp.Services
             List<string> paths,
             HashSet<string> redirectOverrides,
             int maxConcurrency,
+            bool sourceIsSubdomain,
             IProgress<string> progress)
         {
             var results = new List<AuditResult>();
@@ -257,7 +550,7 @@ namespace AuditApp.Services
                         await semaphore.WaitAsync();
                         try
                         {
-                            var result = await AuditPageAsync(sourceBase, testBase.Url, path, testBase.Label, redirectOverrides);
+                            var result = await AuditPageAsync(sourceBase, testBase.Url, path, testBase.Label, redirectOverrides, sourceIsSubdomain);
                             lock (results)
                             {
                                 results.Add(result);
@@ -279,7 +572,7 @@ namespace AuditApp.Services
         /// Audit a single page
         /// </summary>
         private async Task<AuditResult> AuditPageAsync(
-            string sourceBase, string testBase, string path, string testSiteLabel, HashSet<string> redirectOverrides)
+            string sourceBase, string testBase, string path, string testSiteLabel, HashSet<string> redirectOverrides, bool sourceIsSubdomain)
         {
             var result = new AuditResult
             {
@@ -291,8 +584,8 @@ namespace AuditApp.Services
             try
             {
                 // Construct URLs
-                var sourceUrl = !string.IsNullOrEmpty(sourceBase) ? sourceBase + path : null;
-                var testUrl = _urlService.JoinTestUrl(testBase, path, sourceBase);
+                var sourceUrl = !string.IsNullOrEmpty(sourceBase) ? _urlService.JoinSourceUrl(sourceBase, path) : null;
+                var testUrl = _urlService.JoinTestUrl(testBase, path, sourceBase, sourceIsSubdomain);
 
                 result.SourceUrl = sourceUrl;
                 result.TestUrl = testUrl;
@@ -384,6 +677,9 @@ namespace AuditApp.Services
 
             progress?.Report("Writing HTML report...");
             summary.HtmlReportPath = await _reportService.WriteHtmlAsync(summary);
+
+            progress?.Report("Writing executive HTML report...");
+            summary.ExecutiveHtmlPath = await _reportService.WriteExecutiveHtmlAsync(summary);
         }
     }
 }
