@@ -1,5 +1,7 @@
 # Integration Checklist
 
+This version assumes you are consuming the reusable package project instead of manually copying every service file.
+
 ## Pre-Integration (Preparation)
 
 - [ ] Review the README_CSHARP_PORT.md overview
@@ -10,80 +12,49 @@
 ## Project Setup
 
 - [ ] Have an ASP.NET Core Razor Pages project ready
-- [ ] Project targets .NET 6.0 or later (or .NET Framework 4.7.2+)
+- [ ] Project targets .NET 8.0 or later recommended
 - [ ] Git repo initialized (optional but recommended)
 - [ ] Branch created for this feature
 
+## Package Setup
+
+- [ ] From this repo, build the reusable package
+  - [ ] Command: `dotnet pack .\AuditApp.Package\AuditApp.Package.csproj -c Release`
+  - [ ] File created: `AuditApp.Package\bin\Release\WSU.MigrationAudit.0.1.0.nupkg`
+
+- [ ] In your target app, add one of these references
+  - [ ] Local development reference: `dotnet add reference <path-to-AuditApp.Package.csproj>`
+  - [ ] NuGet package reference: `dotnet add package WSU.MigrationAudit --source <feed>`
+
+- [ ] EPPlus license call present in startup
+  - [ ] `ExcelPackage.License.SetNonCommercialOrganization(...)`
+
 ## File Creation
 
-- [ ] Created `Models/AuditModels.cs`
-  - [ ] Contains all 6 model classes
-  - [ ] No compilation errors
+- [ ] If you want the sample dashboard, copy or adapt the UI files from this repo
+  - [ ] `Pages/Audit.cshtml`
+  - [ ] `Pages/Audit.cshtml.cs`
+  - [ ] Program.cs route configuration
 
-- [ ] Created `Services/UrlUtilityService.cs`
-  - [ ] 200+ lines
-  - [ ] No compilation errors
-  - [ ] HttpClient injected correctly
-
-- [ ] Created `Services/AuditAnalysisService.cs`
-  - [ ] 350+ lines
-  - [ ] No compilation errors
-  - [ ] All scoring constants defined
-
-- [ ] Created `Services/PageComparisonService.cs`
-  - [ ] 150+ lines
-  - [ ] HtmlAgilityPack usage correct
-  - [ ] No compilation errors
-
-- [ ] Created `Services/ReportGenerationService.cs`
-  - [ ] 400+ lines
-  - [ ] EPPlus usage correct
-  - [ ] All report methods present
-  - [ ] No compilation errors
-
-- [ ] Created `Services/AuditService.cs`
-  - [ ] 450+ lines
-  - [ ] Main orchestrator logic complete
-  - [ ] All service dependencies injected
-  - [ ] No compilation errors
-
-- [ ] Created `Pages/Audit.cshtml.cs`
-  - [ ] PageModel inherits correctly
-  - [ ] Form binding works
-  - [ ] Async handler methods present
-  - [ ] No compilation errors
-
-- [ ] Created `Pages/Audit.cshtml`
-  - [ ] Form elements match model properties
-  - [ ] CSS styling present
-  - [ ] Report display section exists
-  - [ ] No compilation errors
+- [ ] If you do not want the sample dashboard, create your own entry point
+  - [ ] Razor Page, API controller, background worker, or console host
+  - [ ] Inject `AuditService`
+  - [ ] Build an `AuditConfig`
+  - [ ] Call `RunAuditAsync()`
 
 ## NuGet Packages
 
-- [ ] `HtmlAgilityPack` installed
-  - [ ] Command: `dotnet add package HtmlAgilityPack`
-  - [ ] Version 1.11.46 or later recommended
-
-- [ ] `EPPlus` installed
-  - [ ] Command: `dotnet add package EPPlus`
-  - [ ] Version 6.1+ recommended (includes NonCommercial license context)
-
-- [ ] All packages restore successfully
-  - [ ] No unresolved references
+- [ ] Package restore succeeds for your target app
+- [ ] No unresolved references
 
 ## Startup Configuration
 
 - [ ] Dependency Injection setup complete in Program.cs or Startup.cs
-  - [ ] `builder.Services.AddHttpClient()`
-  - [ ] `builder.Services.AddScoped<UrlUtilityService>()`
-  - [ ] `builder.Services.AddScoped<AuditAnalysisService>()`
-  - [ ] `builder.Services.AddScoped<PageComparisonService>()`
-  - [ ] `builder.Services.AddScoped<ReportGenerationService>()`
-  - [ ] `builder.Services.AddScoped<AuditService>()`
+  - [ ] `builder.Services.AddRazorPages()` if using Razor Pages
+  - [ ] `builder.Services.AddMigrationAuditServices()`
 
 - [ ] EPPlus license configured
-  - [ ] `EPPlus.LicenseContext.SetLicense(LicenseContext.NonCommercial)` added
+  - [ ] `ExcelPackage.License.SetNonCommercialOrganization(...)` added
 
 - [ ] Static file middleware enabled
   - [ ] `app.UseStaticFiles()` present
@@ -96,8 +67,12 @@
 - [ ] Created `Audits/` folder in project root
   - [ ] Folder permissions allow write
 
-- [ ] Updated file serving route to handle `/reports/` path
-  - [ ] Reports middleware added to Program.cs
+- [ ] Created `wwwroot/reports/` folder in project root
+  - [ ] Generated reports are reachable through `/reports/<filename>` links
+
+- [ ] Report publishing path verified
+  - [ ] HTML link opens in browser
+  - [ ] Excel link downloads
 
 ## Build & Compile
 
@@ -110,6 +85,9 @@
   - [ ] ✓ No critical warnings
 
 - [ ] All projects build successfully
+
+- [ ] If the app is already running, build to a separate output folder when validating
+  - [ ] Example: `dotnet build -o .\.artifacts\host-validate /p:UseAppHost=false`
 
 ## Initial Testing
 
@@ -125,6 +103,7 @@
   - [ ] Site Name: "Test"
   - [ ] Source URL: "https://example.com"
   - [ ] Test URL: "https://example.com" (same for testing)
+  - [ ] Toggle subdomain-to-subpath mode when the source is a subdomain and the test URL uses a site path prefix
   - [ ] Click "Start Audit"
 
 - [ ] Audit runs successfully
@@ -133,12 +112,13 @@
   - [ ] No exceptions thrown
 
 - [ ] Results display
-  - [ ] Summary counts show (PASS, FAIL, REVIEW)
-  - [ ] Release readiness shown
-  - [ ] Report links present
+  - [ ] New Report and Previous Report cards render correctly
+  - [ ] Executive preview link appears when executive HTML is generated
+  - [ ] HTML and Excel report links present
 
 - [ ] Reports generated
   - [ ] CSV file created
+  - [ ] Executive HTML file created
   - [ ] HTML file created
   - [ ] Excel file created
 
@@ -186,6 +166,13 @@
 - [ ] QUICKSTART.md saved in project
 - [ ] PYTHON_TO_CSHARP_MAPPING.md saved for reference
 - [ ] STARTUP_CONFIGURATION.txt kept for reference
+
+- [ ] A junior developer can answer these questions from the docs alone
+  - [ ] How do I install or reference the package?
+  - [ ] Where do I register services?
+  - [ ] What folders must exist before the first run?
+  - [ ] How do I run a quick smoke test?
+  - [ ] Where do the generated files appear?
 
 ## Code Quality
 

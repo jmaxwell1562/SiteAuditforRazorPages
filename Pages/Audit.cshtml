@@ -369,29 +369,12 @@
         letter-spacing: 0.06em;
     }
 
-    .status-panel {
-        padding: 24px;
-        margin-bottom: 22px;
-    }
-
-    .status-box {
-        background: linear-gradient(180deg, #faf7f4, #f6f1ec);
-        border: 1px solid var(--wsu-border);
-        border-radius: 16px;
-        padding: 16px;
-        margin-top: 18px;
-        min-height: 180px;
-        max-height: 420px;
-        overflow-y: auto;
-        font-family: Consolas, monospace;
-        font-size: 12px;
-    }
-
     .status-message {
-        margin: 0 0 10px;
+        margin: 12px 0 0;
         padding: 10px 12px;
         border-radius: 12px;
         border: 1px solid transparent;
+        font-size: 13px;
     }
 
     .status-message.success {
@@ -588,7 +571,6 @@
         .hero-card,
         .hero-side,
         .audit-form,
-        .status-panel,
         .report-card {
             border-radius: 18px;
         }
@@ -664,7 +646,7 @@
 
         <form method="post" class="audit-form" id="audit-form">
             <h2>Audit Configuration</h2>
-            <p class="section-note">Source URL, Test URL, and Site Name are required for a single-site run. For multi-site instance runs, provide a Batch Site Mappings file to launch multiple site audits in one pass against the same test environment.</p>
+            <p class="section-note">Source URL, Test URL, and Site Name are required. Use Entire Umbraco Instance when one audit should compare the same source against multiple sibling sites in a single Umbraco instance.</p>
 
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -679,6 +661,7 @@
                 <div class="form-group">
                     <label asp-for="Config.SourceUrl">Source URL (Production) *</label>
                     <input asp-for="Config.SourceUrl" type="text" placeholder="https://source.wsu.edu" />
+                    <div class="input-help">If you omit <strong>https://</strong>, the dashboard will add it automatically for hostnames such as <strong>dining.wsu.edu</strong>.</div>
                     <span asp-validation-for="Config.SourceUrl" class="text-danger"></span>
                 </div>
             </div>
@@ -697,7 +680,7 @@
                     <div class="form-group custom-url-group @(Model.UsesCustomTestUrl ? string.Empty : "hidden")" id="custom-test-url-group">
                         <label for="CustomTestUrl">Custom Test URL</label>
                         <input id="CustomTestUrl" name="CustomTestUrl" type="text" value="@Model.CustomTestUrl" placeholder="https://custom-test.wsu.edu/" />
-                        <div class="input-help">Use a full URL for any environment not listed in the preset dropdown.</div>
+                        <div class="input-help">Use a full URL for any environment not listed in the preset dropdown. If you omit <strong>https://</strong>, the dashboard will add it automatically for hostnames.</div>
                     </div>
                     <div class="input-help">Localhost audits ignore local HTTPS certificate errors but still require the app to be reachable.</div>
                     <span asp-validation-for="Config.TestUrl" class="text-danger"></span>
@@ -705,15 +688,15 @@
 
                 <div class="form-group">
                     <label asp-for="Config.TestScope">Test Scope</label>
-                    <select asp-for="Config.TestScope">
-                        <option value="ask">Ask</option>
-                        <option value="single">Single URL Only</option>
-                        <option value="instance">Include Sibling Sites</option>
+                    <select asp-for="Config.TestScope" id="Config_TestScope">
+                        <option value="single">Single Site</option>
+                        <option value="instance">Entire Umbraco Instance</option>
                     </select>
+                    <div class="input-help">Use <strong>Single Site</strong> for one source-to-test comparison. Use <strong>Entire Umbraco Instance</strong> to include sibling test sites from the same test instance in one audit report.</div>
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="source-subdomain-group">
                 <label class="checkbox-label" for="Config_SourceIsSubdomain">
                     <input asp-for="Config.SourceIsSubdomain" type="checkbox" />
                     <span>Source is a subdomain mapped under the test URL path</span>
@@ -736,26 +719,22 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label asp-for="Config.TestAllowlist">Test Allowlist (comma-separated labels or URLs)</label>
-                    <input asp-for="Config.TestAllowlist" placeholder="cougarcard, handbook" />
-                    <div class="input-help">Use commas between sibling site labels, or paste full URLs. Slash-separated labels are accepted, but commas are preferred.</div>
+                <div class="form-group @(Model.Config.TestScope == "instance" ? string.Empty : "hidden")" id="allowlist-group">
+                    <label asp-for="Config.TestAllowlist">Test Allowlist</label>
+                    <textarea asp-for="Config.TestAllowlist" rows="3" placeholder="chs, camp, https://w3-testing.asis.wsu.edu/aea/hep/"></textarea>
+                    <div class="input-help">Optional. Enter comma-separated sibling labels or full URLs to include additional sites from the same test instance in this audit.</div>
+                </div>
+
+                <div class="form-group @(Model.Config.TestScope == "instance" ? string.Empty : "hidden")" id="allowlist-file-group">
+                    <label asp-for="Config.TestAllowlistFile">Test Allowlist File</label>
+                    <input asp-for="Config.TestAllowlistFile" placeholder="path/to/test-sites-allowlist.txt" />
+                    <div class="input-help">Optional. Use one label or full URL per line. Blank lines and lines starting with <strong>#</strong> are ignored.</div>
                 </div>
 
                 <div class="form-group">
-                    <label asp-for="Config.BatchSiteMappingsFile">Batch Site Mappings File</label>
-                    <input asp-for="Config.BatchSiteMappingsFile" placeholder="path/to/u17-batch-sites.txt" />
-                    <div class="input-help">Required for U17-style instance batches. Use one line per site in the format <strong>Site Name | Source URL | Test Path or Full Test URL</strong>. Blank lines and lines starting with <strong>#</strong> are ignored.</div>
-                </div>
-
-                <div class="form-group">
-                    <label asp-for="Config.TestAllowlistFile">Allowlist File Path</label>
-                    <input asp-for="Config.TestAllowlistFile" placeholder="path/to/allowlist.txt" />
-                </div>
-
-                <div class="form-group">
-                    <label asp-for="Config.RedirectOverridePaths">Redirect Override Paths (comma-separated)</label>
+                    <label asp-for="Config.RedirectOverridePaths">Intentional Redirect Paths (comma-separated)</label>
                     <input asp-for="Config.RedirectOverridePaths" placeholder="/path1, /path2" />
+                    <div class="input-help">Optional. Use this only for source paths that are expected to redirect on the test site and should be reported as intentional redirects instead of failures. This does not remap one URL to another.</div>
                 </div>
             </div>
 
@@ -769,36 +748,8 @@
                     <div class="field-note">@Model.RunDurationNotice</div>
                 </div>
             </div>
+            <div class="status-message info hidden" id="run-feedback" role="status" aria-live="polite"></div>
         </form>
-
-        <section class="status-panel">
-            <h2>Audit Status</h2>
-            <p class="section-note">Run messages are kept here. If preflight stops before a new report is generated, the dashboard stays in an error state and does not relabel older results as new output.</p>
-            <div class="status-box" id="status-box">
-                @if (Model.StatusMessages.Count > 0)
-                {
-                    @foreach (var message in Model.StatusMessages)
-                    {
-                        if (message.StartsWith("✓"))
-                        {
-                            <div class="status-message success">@message</div>
-                        }
-                        else if (message.StartsWith("✗"))
-                        {
-                            <div class="status-message error">@message</div>
-                        }
-                        else
-                        {
-                            <div class="status-message info">@message</div>
-                        }
-                    }
-                }
-                else
-                {
-                    <div class="status-message info">Ready to run. Generated reports stay hidden until history exists for the current site.</div>
-                }
-            </div>
-        </section>
 
         <section id="reports-section" class="@(hasReports ? string.Empty : "hidden")">
             <div class="reports-heading">
@@ -860,17 +811,6 @@
             </div>
         </section>
 
-        <section id="batch-reports-section" class="hidden">
-            <div class="reports-heading">
-                <div>
-                    <h2>Batch Reports</h2>
-                    <p>Latest published report artifacts for each site included in the current batch run.</p>
-                </div>
-                <div class="status-pill" id="batch-report-count">0 sites</div>
-            </div>
-
-            <div class="reports-grid" id="batch-reports-list"></div>
-        </section>
     </div>
 </div>
 
@@ -880,26 +820,36 @@
         (function () {
             const form = document.getElementById('audit-form');
             const siteNameInput = document.getElementById('Config_SiteName');
+            const sourceUrlInput = document.getElementById('Config_SourceUrl');
             const testUrlSelect = document.getElementById('Config_TestUrl');
+            const testScopeSelect = document.getElementById('Config_TestScope');
             const customTestUrlGroup = document.getElementById('custom-test-url-group');
             const customTestUrlInput = document.getElementById('CustomTestUrl');
+            const sourceSubdomainGroup = document.getElementById('source-subdomain-group');
+            const sourceSubdomainInput = document.getElementById('Config_SourceIsSubdomain');
+            const allowlistGroup = document.getElementById('allowlist-group');
+            const allowlistFileGroup = document.getElementById('allowlist-file-group');
             const runButton = document.getElementById('run-button');
             const buttonText = document.getElementById('btn-text');
             const runStatePill = document.getElementById('run-state-pill');
-            const statusBox = document.getElementById('status-box');
+            const runFeedback = document.getElementById('run-feedback');
             const reportsSection = document.getElementById('reports-section');
             const reportSitePill = document.getElementById('report-site-pill');
-            const batchReportsSection = document.getElementById('batch-reports-section');
-            const batchReportsList = document.getElementById('batch-reports-list');
-            const batchReportCount = document.getElementById('batch-report-count');
             const customTestUrlOption = '@Model.CustomTestUrlOption';
 
-            function appendStatusMessage(message, kind) {
-                const item = document.createElement('div');
-                item.className = 'status-message ' + kind;
-                item.textContent = message;
-                statusBox.appendChild(item);
-                statusBox.scrollTop = statusBox.scrollHeight;
+            function setRunFeedback(message, kind) {
+                if (!runFeedback) {
+                    return;
+                }
+
+                if (!message) {
+                    runFeedback.textContent = '';
+                    runFeedback.className = 'status-message info hidden';
+                    return;
+                }
+
+                runFeedback.textContent = message;
+                runFeedback.className = 'status-message ' + (kind || 'info');
             }
 
             function setRunState(state) {
@@ -939,6 +889,10 @@
                 }
             }
 
+            function isInstanceScope() {
+                return !!(testScopeSelect && testScopeSelect.value === 'instance');
+            }
+
             function buildStatBadge(label, value) {
                 const badge = document.createElement('span');
                 badge.className = 'report-stat';
@@ -975,6 +929,42 @@
                 if (!usesCustom) {
                     customTestUrlInput.value = '';
                 }
+            }
+
+            function syncScopeVisibility() {
+                const showInstanceInputs = isInstanceScope();
+
+                if (allowlistGroup) {
+                    allowlistGroup.classList.toggle('hidden', !showInstanceInputs);
+                }
+
+                if (allowlistFileGroup) {
+                    allowlistFileGroup.classList.toggle('hidden', !showInstanceInputs);
+                }
+
+                if (sourceSubdomainGroup) {
+                    sourceSubdomainGroup.classList.remove('hidden');
+                }
+
+                if (sourceSubdomainInput) {
+                    sourceSubdomainInput.disabled = false;
+                }
+            }
+
+            function normalizeUrlInputValue(input) {
+                if (!input) {
+                    return;
+                }
+
+                const rawValue = (input.value || '').trim();
+                if (!rawValue || rawValue.includes('://') || rawValue.startsWith('/')) {
+                    input.value = rawValue;
+                    return;
+                }
+
+                const firstSegment = rawValue.split('/')[0];
+                const looksLikeHost = firstSegment.includes('.') || firstSegment.includes(':') || firstSegment.toLowerCase() === 'localhost';
+                input.value = looksLikeHost ? 'https://' + rawValue : rawValue;
             }
 
             function renderHistory(payload) {
@@ -1025,83 +1015,6 @@
                 }
             }
 
-            function buildBatchReportCard(item) {
-                const card = document.createElement('article');
-                card.className = 'report-card';
-
-                const title = document.createElement('h3');
-                title.textContent = item.siteName;
-                card.appendChild(title);
-
-                const meta = document.createElement('div');
-                meta.className = 'report-meta';
-                meta.textContent = item.generatedAtDisplay || 'No timestamp available';
-                card.appendChild(meta);
-
-                const actions = document.createElement('div');
-                actions.className = 'report-actions';
-
-                if (item.htmlUrl) {
-                    const htmlLink = document.createElement('a');
-                    htmlLink.className = 'report-link';
-                    htmlLink.href = item.htmlUrl;
-                    htmlLink.target = '_blank';
-                    htmlLink.rel = 'noreferrer';
-                    htmlLink.textContent = 'Open HTML Audit Report';
-                    actions.appendChild(htmlLink);
-                }
-
-                if (item.executiveHtmlUrl) {
-                    const executiveLink = document.createElement('a');
-                    executiveLink.className = 'report-link secondary';
-                    executiveLink.href = item.executiveHtmlUrl;
-                    executiveLink.target = '_blank';
-                    executiveLink.rel = 'noreferrer';
-                    executiveLink.textContent = 'Open Executive Preview';
-                    actions.appendChild(executiveLink);
-                }
-
-                if (item.xlsxUrl) {
-                    const xlsxLink = document.createElement('a');
-                    xlsxLink.className = 'report-link secondary';
-                    xlsxLink.href = item.xlsxUrl;
-                    xlsxLink.target = '_blank';
-                    xlsxLink.rel = 'noreferrer';
-                    xlsxLink.textContent = 'Open Excel Workbook';
-                    actions.appendChild(xlsxLink);
-                }
-
-                card.appendChild(actions);
-
-                const stats = document.createElement('div');
-                stats.className = 'report-stats';
-                stats.appendChild(buildStatBadge('PASS', item.passCount || 0));
-                stats.appendChild(buildStatBadge('REVIEW', item.reviewCount || 0));
-                stats.appendChild(buildStatBadge('FAIL', item.failCount || 0));
-                stats.appendChild(buildStatBadge('REDIRECT', item.redirectCount || 0));
-                card.appendChild(stats);
-
-                if (item.error) {
-                    const error = document.createElement('p');
-                    error.className = 'report-empty';
-                    error.textContent = item.error;
-                    card.appendChild(error);
-                }
-
-                return card;
-            }
-
-            function renderBatchReports(items) {
-                const reports = Array.isArray(items) ? items : [];
-                batchReportsList.innerHTML = '';
-                batchReportsSection.classList.toggle('hidden', reports.length === 0);
-                batchReportCount.textContent = reports.length === 1 ? '1 site' : reports.length + ' sites';
-
-                reports.forEach(function (item) {
-                    batchReportsList.appendChild(buildBatchReportCard(item));
-                });
-            }
-
             async function loadHistoryForSite() {
                 const siteName = (siteNameInput.value || '').trim();
                 if (!siteName) {
@@ -1117,27 +1030,36 @@
 
                     renderHistory(await response.json());
                 } catch (error) {
-                    appendStatusMessage(error.message, 'error');
+                    setRunFeedback(error.message, 'error');
                 }
             }
 
             siteNameInput.addEventListener('blur', loadHistoryForSite);
             siteNameInput.addEventListener('change', loadHistoryForSite);
             testUrlSelect.addEventListener('change', syncCustomTestUrlVisibility);
+            testScopeSelect.addEventListener('change', function () {
+                syncScopeVisibility();
+                loadHistoryForSite();
+            });
+            sourceUrlInput.addEventListener('blur', function () { normalizeUrlInputValue(sourceUrlInput); });
+            customTestUrlInput.addEventListener('blur', function () { normalizeUrlInputValue(customTestUrlInput); });
 
             if ((customTestUrlInput.value || '').trim()) {
                 testUrlSelect.value = customTestUrlOption;
             }
 
             syncCustomTestUrlVisibility();
+            syncScopeVisibility();
 
             form.addEventListener('submit', async function (event) {
                 event.preventDefault();
-                statusBox.innerHTML = '';
-                appendStatusMessage('Audit request submitted. ' + '@Model.RunDurationNotice', 'info');
+                normalizeUrlInputValue(sourceUrlInput);
+                normalizeUrlInputValue(customTestUrlInput);
+                const instanceMode = isInstanceScope();
+                setRunFeedback((instanceMode ? 'Instance audit request submitted. ' : 'Audit request submitted. ') + '@Model.RunDurationNotice', 'info');
 
                 if (testUrlSelect.value === customTestUrlOption && !(customTestUrlInput.value || '').trim()) {
-                    appendStatusMessage('✗ Enter a custom Test URL before starting the audit.', 'error');
+                    setRunFeedback('Enter a custom Test URL before starting the audit.', 'error');
                     setRunState('Error');
                     window.setTimeout(function () {
                         setRunState('Ready');
@@ -1160,24 +1082,14 @@
                         throw new Error(payload.error || 'Audit failed before report generation completed.');
                     }
 
-                    payload.messages.forEach(function (message) {
-                        const kind = message.startsWith('Error') ? 'error' : 'info';
-                        appendStatusMessage(message, kind);
-                    });
-
-                    appendStatusMessage('✓ Audit complete!', 'success');
-                    renderBatchReports(payload.batchReports || []);
-                    if (payload.batchMode) {
-                        renderHistory({ hasReports: false });
-                    } else {
-                        renderHistory(payload);
-                    }
+                    setRunFeedback('Audit complete. Latest report links are ready below.', 'success');
+                    renderHistory(payload);
                     setRunState('Complete');
                     window.setTimeout(function () {
                         setRunState('Ready');
                     }, 2400);
                 } catch (error) {
-                    appendStatusMessage('✗ ' + error.message, 'error');
+                    setRunFeedback(error.message, 'error');
                     setRunState('Error');
                     window.setTimeout(function () {
                         setRunState('Ready');

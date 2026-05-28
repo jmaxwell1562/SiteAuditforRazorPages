@@ -2,7 +2,22 @@
 
 ## Overview
 
-This is a complete C# port of the Python `audit.py` website migration auditor, designed for ASP.NET Core Razor Pages. The architecture is modular and extensible, with clear separation of concerns across multiple services.
+This is a complete C# port of the Python `audit.py` website migration auditor, designed for ASP.NET Core Razor Pages. The architecture is modular and extensible, with clear separation of concerns across multiple services, and the core engine is now packaged in `AuditApp.Package` for reuse in other C# applications.
+
+## Reusable Package
+
+- Project: `AuditApp.Package/AuditApp.Package.csproj`
+- Package ID: `WSU.MigrationAudit`
+- Service registration: `AddMigrationAuditServices()`
+- Pack command: `dotnet pack .\AuditApp.Package\AuditApp.Package.csproj -c Release`
+
+Minimal host setup:
+
+```csharp
+using AuditApp;
+
+builder.Services.AddMigrationAuditServices();
+```
 
 ## Architecture
 
@@ -14,7 +29,7 @@ Handles URL manipulation, normalization, and network operations.
 **Key Methods:**
 - `NormalizePath(path)` - Normalize path format (leading/trailing slashes)
 - `NormalizeSiteBase(url)` - Remove trailing slash from URL
-- `JoinTestUrl(base, path, sourceBase)` - Smart URL joining with section/root detection
+- `JoinTestUrl(base, path, sourceBase, forcePrefixBasePath)` - Smart URL joining with section/root detection and explicit subdomain-to-subpath support
 - `ProbeUrlAsync(url)` - HTTP HEAD request to check status without loading content
 - `MaybeCorrectTestBaseAsync(sourceBase, testBase, paths)` - Auto-detect and fix w2/wdev3 host mismatches
 - `IsLocalhostUrl(url)` - Check if URL is localhost (for SSL bypass)
@@ -85,7 +100,7 @@ Generate CSV, XLSX, and HTML reports.
 - `WriteClusterSummaryAsync(summary)` - Write failure clusters
 - `WriteReadinessSummaryAsync(summary)` - Write readiness summary
 - `WriteExcelAsync(summary)` - Generate formatted Excel workbook
-- `WriteHtmlAsync(summary)` - Generate HTML report with charts
+- `WriteHtmlAsync(summary)` - Generate HTML report with section readiness and detailed rows
 
 **Usage:**
 ```csharp
@@ -115,6 +130,7 @@ var config = new AuditConfig
     SiteName = "Cougar Card",
     SourceUrl = "https://cougarcard.wsu.edu",
     TestUrl = "https://wdev3-testing.asis.wsu.edu/cougarcard",
+    SourceIsSubdomain = false,
     TestScope = "single",
     MaxTabs = 5,
     MaxPaths = 0  // 0 = all paths
@@ -138,14 +154,20 @@ public class AuditConfig
     public string SourceUrl { get; set; }          // "https://cougarcard.wsu.edu"
     public string TestUrl { get; set; }            // "https://w2-testing.asis.wsu.edu/cougarcard"
     public string TestSlug { get; set; }           // (deprecated)
-    public string TestScope { get; set; }          // "ask", "single", or "instance"
-    public string TestAllowlist { get; set; }      // "cougarcard,handbook"
-    public string TestAllowlistFile { get; set; }  // "path/to/allowlist.txt"
+    public string TestScope { get; set; }          // "single" or "batch"
+    public string TestAllowlist { get; set; }      // legacy
+    public string TestAllowlistFile { get; set; }  // legacy
     public string RedirectOverridePaths { get; set; }
     public int MaxTabs { get; set; }               // Parallel tabs (default 5)
     public int MaxPaths { get; set; }              // Limit paths (0 = all)
 }
 ```
+
+### Current Batch Model
+- Each batch row represents one source host mapped to one target base path or full target URL.
+- Source path discovery uses the source sitemap and links that stay on that source host.
+- If a program is nested under a parent site in navigation or Umbraco but its source content lives on another domain, it must be listed on its own batch row.
+- Full target URLs with path prefixes such as `https://w3-testing.asis.wsu.edu/aea/camp/` are supported and preserve the full target path during URL joins.
 
 ### AuditResult
 ```csharp

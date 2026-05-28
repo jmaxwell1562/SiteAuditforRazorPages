@@ -2,7 +2,17 @@
 
 ## What You Have
 
-A complete, production-ready C# port of your Python `audit.py` website migration auditor, built for ASP.NET Core Razor Pages.
+A complete, production-ready C# port of your Python `audit.py` website migration auditor, built for ASP.NET Core Razor Pages and extracted into a reusable package project.
+
+## Package Entry Point
+
+The reusable package project now lives at `AuditApp.Package/AuditApp.Package.csproj`.
+
+- Package ID: `WSU.MigrationAudit`
+- Target framework: `net8.0`
+- DI entry point: `builder.Services.AddMigrationAuditServices()`
+- Pack command: `dotnet pack .\AuditApp.Package\AuditApp.Package.csproj -c Release`
+- Output package: `AuditApp.Package\bin\Release\WSU.MigrationAudit.0.1.0.nupkg`
 
 ## Files Created
 
@@ -31,7 +41,7 @@ A complete, production-ready C# port of your Python `audit.py` website migration
 4. **ReportGenerationService.cs** (400 lines)
    - CSV export (audit results, clusters, readiness)
    - Excel workbook with colored status cells
-   - HTML report with summary cards and tables
+   - HTML report with section readiness, detailed rows, and executive preview support
    - Proper escaping and formatting
 
 5. **AuditService.cs** (450 lines)
@@ -116,9 +126,14 @@ A complete, production-ready C# port of your Python `audit.py` website migration
 ✅ **Professional Reports**
 - CSV for data analysis
 - Excel with color-coding
-- HTML for sharing
+- HTML for sharing with Section Release Readiness and Detailed Rows tables
+- Executive preview HTML surfaced alongside the main report
 - Cluster analysis
 - Readiness summary
+
+✅ **Subdomain-To-Subpath Support**
+- Explicit dashboard control for source subdomains that migrate under a test path
+- Preserves a test URL path prefix such as `/chs` for every audited page when enabled
 
 ## NuGet Dependencies
 
@@ -130,21 +145,31 @@ Microsoft.AspNetCore.Mvc
 
 ## Integration Steps
 
-1. **Copy all files** to your Razor Pages project
-2. **Install NuGet packages:**
+1. **Pack or publish the reusable package:**
    ```bash
-   dotnet add package HtmlAgilityPack
-   dotnet add package EPPlus
+   dotnet pack .\AuditApp.Package\AuditApp.Package.csproj -c Release
    ```
-3. **Register services** in Program.cs (see STARTUP_CONFIGURATION.txt)
+2. **Reference the package from your target app:**
+   ```bash
+   dotnet add package WSU.MigrationAudit --source <your-package-feed>
+   ```
+   Or use a local project reference to `AuditApp.Package.csproj` while integrating inside this repo.
+3. **Register services** in Program.cs with `builder.Services.AddMigrationAuditServices()`.
 4. **Create output folder:** `mkdir Audits`
-5. **Navigate to:** `/audit` page
-6. **Start testing!**
+5. **Add your own UI or call `AuditService` directly from an existing workflow**
+6. **Start testing**
 
 ## Usage Example
 
 ```csharp
-// In your PageModel
+using AuditApp;
+using AuditApp.Models;
+using AuditApp.Services;
+
+// In Program.cs
+builder.Services.AddMigrationAuditServices();
+
+// In your PageModel, API endpoint, worker, or console host
 public class AuditModel : PageModel
 {
     private readonly AuditService _auditService;

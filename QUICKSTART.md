@@ -1,49 +1,54 @@
-# Quick Start: Integrate C# Audit Service into Razor Pages
+# Quick Start: Integrate C# Audit Service into a C# Project
 
-## Step 1: Install Dependencies
+## Step 1: Build or Pack the Reusable Library
 
 ```bash
-cd your-project
-dotnet add package HtmlAgilityPack
-dotnet add package EPPlus
+cd PostMigrationUmbraco_SiteAudit
+dotnet pack .\AuditApp.Package\AuditApp.Package.csproj -c Release
 ```
 
-## Step 2: Create Folders
+This produces `AuditApp.Package\bin\Release\WSU.MigrationAudit.0.1.0.nupkg`.
+
+## Step 2: Reference the Package from Your App
+
+**Option A: local project reference during development**
+
+```bash
+dotnet add reference ..\PostMigrationUmbraco_SiteAudit\AuditApp.Package\AuditApp.Package.csproj
+```
+
+**Option B: consume the packed NuGet package**
+
+```bash
+dotnet add package WSU.MigrationAudit --source <your-package-feed>
+```
+
+## Step 3: Create Folders
 
 ```
 YourProject/
-├── Models/
-│   └── AuditModels.cs              (copy provided file)
-├── Services/
-│   ├── UrlUtilityService.cs        (copy provided file)
-│   ├── AuditAnalysisService.cs     (copy provided file)
-│   ├── PageComparisonService.cs    (copy provided file)
-│   ├── ReportGenerationService.cs  (copy provided file)
-│   └── AuditService.cs             (copy provided file)
+├── Audits/
+├── wwwroot/
+│   └── reports/
 └── Pages/
-    ├── Audit.cshtml                (copy provided file)
-    └── Audit.cshtml.cs             (copy provided file)
+    └── ... your own UI or API surface
 ```
 
-## Step 3: Update Program.cs (or Startup.cs)
+## Step 4: Update Program.cs (or Startup.cs)
 
 **For .NET 6+ (Program.cs):**
 
 ```csharp
+using AuditApp;
+using AuditApp.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Razor Pages
 builder.Services.AddRazorPages();
 
-// Add HttpClient
-builder.Services.AddHttpClient();
-
-// Register Audit Services
-builder.Services.AddScoped<UrlUtilityService>();
-builder.Services.AddScoped<AuditAnalysisService>();
-builder.Services.AddScoped<PageComparisonService>();
-builder.Services.AddScoped<ReportGenerationService>();
-builder.Services.AddScoped<AuditService>();
+// Register the packaged audit engine
+builder.Services.AddMigrationAuditServices();
 
 var app = builder.Build();
 
@@ -58,17 +63,42 @@ app.Run();
 public void ConfigureServices(IServiceCollection services)
 {
     services.AddRazorPages();
-    services.AddHttpClient();
-    
-    services.AddScoped<UrlUtilityService>();
-    services.AddScoped<AuditAnalysisService>();
-    services.AddScoped<PageComparisonService>();
-    services.AddScoped<ReportGenerationService>();
-    services.AddScoped<AuditService>();
+    services.AddMigrationAuditServices();
 }
 ```
 
-## Step 4: Create Report Output Folder
+## Step 5: Call the Package
+
+```csharp
+using AuditApp.Models;
+using AuditApp.Services;
+
+public class AuditRunner
+{
+    private readonly AuditService _auditService;
+
+    public AuditRunner(AuditService auditService)
+    {
+        _auditService = auditService;
+    }
+
+    public async Task<AuditSummary> RunAsync()
+    {
+        var config = new AuditConfig
+        {
+            SiteName = "Test Site",
+            SourceUrl = "https://example.com",
+            TestUrl = "https://example-dev.com",
+            MaxTabs = 5,
+            MaxPaths = 80
+        };
+
+        return await _auditService.RunAuditAsync(config);
+    }
+}
+```
+
+## Step 6: Create Report Output Folder
 
 ```bash
 mkdir wwwroot/reports
@@ -96,7 +126,7 @@ app.Use(async (context, next) =>
 });
 ```
 
-## Step 5: Test the Integration
+## Step 7: Test the Integration
 
 1. **Build the project:**
    ```bash
@@ -119,15 +149,26 @@ app.Use(async (context, next) =>
    - Test URL: "https://example-dev.com"
    - Click "Start Audit"
 
-## Step 6: Verify Output
+## Step 8: Verify Output
 
 After audit completes, you should see:
 
-- ✓ Summary counts (PASS, FAIL, REVIEW)
-- ✓ Release readiness status
-- ✓ Links to generated reports (CSV, Excel, HTML)
-- ✓ Queue A and Queue B results
+- ✓ New Report and Previous Report history cards
+- ✓ Links to generated reports (HTML, Executive Preview, Excel)
+- ✓ HTML report with Section Release Readiness and Detailed Rows tables
+- ✓ Release readiness CSV with section-based rows
+- ✓ Fix On Test Site top priorities
 - ✓ Files in: `Audits/Audit_<SITE>_<TIMESTAMP>/`
+
+### Subdomain-To-Subpath Migrations
+
+If the source site is a subdomain but the test site lives under a path, enable **Source is a subdomain mapped under the test URL path**.
+
+Example:
+- Source: `https://cougarhealth.wsu.edu`
+- Test: `https://dev.studentaffairs.wsu.edu/chs`
+
+With that setting enabled, the audit preserves `/chs` as the site root prefix instead of dropping it and probing the host root.
 
 ## Common Issues
 
@@ -135,13 +176,9 @@ After audit completes, you should see:
 
 **Error:** `InvalidOperationException: Unable to resolve service for type 'AuditService'`
 
-**Solution:** Ensure all services are registered in Program.cs:
+**Solution:** Ensure the package extension is registered in Program.cs:
 ```csharp
-builder.Services.AddScoped<UrlUtilityService>();
-builder.Services.AddScoped<AuditAnalysisService>();
-builder.Services.AddScoped<PageComparisonService>();
-builder.Services.AddScoped<ReportGenerationService>();
-builder.Services.AddScoped<AuditService>();
+builder.Services.AddMigrationAuditServices();
 ```
 
 ### Issue: "Reports folder not found"
@@ -199,14 +236,12 @@ Create a console wrapper:
 
 ```csharp
 // Program.cs (for console app)
+using AuditApp;
 using AuditApp.Models;
 using AuditApp.Services;
 
 var services = new ServiceCollection();
-services.AddHttpClient();
-services.AddScoped<UrlUtilityService>();
-services.AddScoped<AuditAnalysisService>();
-services.AddScoped<PageComparisonService>();
+services.AddMigrationAuditServices();
 services.AddScoped<ReportGenerationService>();
 services.AddScoped<AuditService>();
 

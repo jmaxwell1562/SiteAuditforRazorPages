@@ -33,6 +33,7 @@ namespace AuditApp.Pages
         };
 
         private readonly AuditService _auditService;
+        private readonly UrlUtilityService _urlService;
 
         [BindProperty]
         public AuditConfig Config { get; set; } = new();
@@ -54,9 +55,10 @@ namespace AuditApp.Pages
         public string CustomTestUrlOption => CustomTestUrlOptionValue;
         public bool UsesCustomTestUrl => !string.IsNullOrWhiteSpace(CustomTestUrl);
 
-        public AuditModel(AuditService auditService)
+        public AuditModel(AuditService auditService, UrlUtilityService urlService)
         {
             _auditService = auditService;
+            _urlService = urlService;
         }
 
         public void OnGet()
@@ -87,7 +89,7 @@ namespace AuditApp.Pages
                     StatusMessages.Add($"[{DateTime.Now:HH:mm:ss}] {msg}");
                 });
 
-                if (HasBatchSiteMappings())
+                if (HasLegacyBatchSiteMappings())
                 {
                     var batchResults = await RunBatchAuditAsync(progress);
                     var successCount = batchResults.Count(result => result.IsSuccess);
@@ -160,7 +162,7 @@ namespace AuditApp.Pages
 
             try
             {
-                if (HasBatchSiteMappings())
+                if (HasLegacyBatchSiteMappings())
                 {
                     var batchResults = await RunBatchAuditAsync(progress);
                     var successfulResults = batchResults.Where(result => result.IsSuccess).ToList();
@@ -260,17 +262,20 @@ namespace AuditApp.Pages
 
         private void InitializeDefaults()
         {
+            NormalizeConfigUrls();
+            NormalizeTestScopeSelection();
             NormalizeTestUrlSelection();
             Config.MaxTabs = Config.MaxTabs <= 0 ? 5 : Config.MaxTabs;
             Config.MaxPaths = Config.MaxPaths < 0 ? 0 : Config.MaxPaths;
-            Config.TestScope = string.IsNullOrWhiteSpace(Config.TestScope) ? "ask" : Config.TestScope;
             RunButtonState = IsRunning ? "Running" : "Ready";
         }
 
         private bool HasRequiredInputs()
         {
+            NormalizeConfigUrls();
+            NormalizeTestScopeSelection();
             NormalizeTestUrlSelection();
-            if (HasBatchSiteMappings())
+            if (IsLegacyBatchModeSelected())
                 return !string.IsNullOrWhiteSpace(Config.TestUrl)
                     && !string.IsNullOrWhiteSpace(Config.BatchSiteMappingsFile);
 
@@ -281,14 +286,36 @@ namespace AuditApp.Pages
 
         private string GetRequiredInputMessage()
         {
-            return HasBatchSiteMappings()
+            return IsLegacyBatchModeSelected()
                 ? "Test URL and Batch Site Mappings File are required for external batch runs."
                 : "Site Name, Source URL, and Test URL are required.";
         }
 
-        private bool HasBatchSiteMappings()
+        private void NormalizeTestScopeSelection()
         {
-            return !string.IsNullOrWhiteSpace(Config.BatchSiteMappingsFile);
+            var normalizedScope = (Config.TestScope ?? string.Empty).Trim().ToLowerInvariant();
+            Config.TestScope = normalizedScope switch
+            {
+                "batch" => "batch",
+                "instance" => "instance",
+                "ask" => "single",
+                _ => "single"
+            };
+        }
+
+        private bool IsInstanceModeSelected()
+        {
+            return string.Equals(Config.TestScope, "instance", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsLegacyBatchModeSelected()
+        {
+            return string.Equals(Config.TestScope, "batch", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool HasLegacyBatchSiteMappings()
+        {
+            return IsLegacyBatchModeSelected() && !string.IsNullOrWhiteSpace(Config.BatchSiteMappingsFile);
         }
 
         private void NormalizeTestUrlSelection()
@@ -317,6 +344,25 @@ namespace AuditApp.Pages
             {
                 CustomTestUrl = Config.TestUrl;
             }
+        }
+
+        private void NormalizeConfigUrls()
+        {
+            Config.SourceUrl = NormalizeUrlInput(Config.SourceUrl);
+            Config.TestUrl = NormalizeUrlInput(Config.TestUrl);
+            CustomTestUrl = NormalizeUrlInput(CustomTestUrl);
+        }
+
+        private string NormalizeUrlInput(string value)
+        {
+            var trimmed = value?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(trimmed))
+                return string.Empty;
+
+            if (string.Equals(trimmed, CustomTestUrlOptionValue, StringComparison.Ordinal))
+                return trimmed;
+
+            return _urlService.NormalizeSiteBase(trimmed);
         }
 
         private static bool IsPresetTestUrl(string value)
@@ -570,11 +616,23 @@ namespace AuditApp.Pages
                     SiteName = siteName,
                     SourceUrl = sourceUrl,
                     TestUrl = ResolveBatchTestUrl(Config.TestUrl, sourceUrl, testTarget),
-                    SourceIsSubdomain = !LooksLikeAbsoluteUrl(testTarget) && !string.IsNullOrWhiteSpace(testTarget)
+                    SourceIsSubdomain = ShouldPreserveBatchPathPrefix(testTarget)
                 });
             }
 
             return entries;
+        }
+
+        private static bool ShouldPreserveBatchPathPrefix(string testTarget)
+        {
+            if (string.IsNullOrWhiteSpace(testTarget))
+                return false;
+
+            if (!LooksLikeAbsoluteUrl(testTarget))
+                return true;
+
+            return Uri.TryCreate(testTarget, UriKind.Absolute, out var targetUri)
+                && !string.IsNullOrWhiteSpace(targetUri.AbsolutePath.Trim('/'));
         }
 
         private static string ResolveBatchTestUrl(string baseTestUrl, string sourceUrl, string testTarget)

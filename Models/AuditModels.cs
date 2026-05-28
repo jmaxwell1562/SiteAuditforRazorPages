@@ -13,11 +13,11 @@ namespace AuditApp.Models
         public string TestUrl { get; set; }
         public bool SourceIsSubdomain { get; set; }
         public string TestSlug { get; set; } = "/";
-        public string TestScope { get; set; } = "ask"; // ask, single, instance
+        public string TestScope { get; set; } = "single"; // single, instance
         public string TestAllowlist { get; set; } = "";
         public string TestAllowlistFile { get; set; } = "";
-        public string BatchSiteMappings { get; set; } = "";
-        public string BatchSiteMappingsFile { get; set; } = "";
+        public string BatchSiteMappings { get; set; } = ""; // legacy compatibility
+        public string BatchSiteMappingsFile { get; set; } = ""; // legacy compatibility
         public string RedirectOverridePaths { get; set; } = "";
         public int MaxTabs { get; set; } = 5;
         public int MaxPaths { get; set; } = 0; // 0 = all paths

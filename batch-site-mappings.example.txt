@@ -1,6 +1,45 @@
 # Site Name | Source URL | Test Path or Full Test URL
 # Blank lines and lines that start with # are ignored.
 # The third column can be either a test path under the shared Test URL or a full test URL.
+# Batch mappings are source-host based. If a section appears under a parent site in navigation or Umbraco
+# but its source pages live on another domain, give it its own row using that source domain.
+# Full target URLs with path prefixes are supported and preserve the full test path, for example:
+# camp | https://camp.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/camp/
 
-CougarCard | https://cougarcard.wsu.edu | cougarcard
-Student Employee Handbook | https://dining.wsu.edu/employeehandbook/ | student-employee-handbook
+
+accommodations | https://accommodations.wsu.edu/ | accommodations
+aastudentcenter | https://aastudentcenter.wsu.edu/ | aastudentcenter
+culturalcenter | https://culturalcenter.wsu.edu/ | culturalcenter
+studentfees | https://studentfees.wsu.edu/ | studentfees
+hep | https://hep.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/hep/
+women | https://women.wsu.edu/ | women
+smartstart | https://smartstart.wsu.edu/ | smartstart
+mss | https://mss.wsu.edu/ | mss
+lgbt | https://lgbt.wsu.edu/ | lgbt
+thecenter | https://thecenter.wsu.edu/ | thecenter
+Disabled Student Center | https://communities.wsu.edu/disabled-student-center/ | https://w3-testing.asis.wsu.edu/communities/disabled-student-center/
+chilatcenter | https://chilatcenter.wsu.edu/ | chilatcenter
+aapi | https://aapi.wsu.edu/ | aapi
+collegebound | https://collegebound.wsu.edu/ | collegebound
+tmp | https://tmp.wsu.edu/ | tmp
+camp | https://camp.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/camp/
+sssp | https://sssp.wsu.edu/ | sssp
+aea | https://aea.wsu.edu/ | aea
+handbook | https://handbook.wsu.edu/ | https://w3-testing.asis.wsu.edu/handbook/
+first | https://first.wsu.edu/ | first
+communitystandards | https://studentaffairs.wsu.edu/communitystandards/ | communitystandards
+studentaffairs | https://studentaffairs.wsu.edu/ | studentaffairs
+communities | https://studentaffairs.wsu.edu/communities/ | communities
+studentcare | https://studentaffairs.wsu.edu/studentcare/ | studentcare
+deanofstudents | https://studentaffairs.wsu.edu/deanofstudents/ | deanofstudents
+counsel | https://counsel.wsu.edu/ | counsel
+mlk | https://mlk.wsu.edu/ | mlk
+hws | https://hws.wsu.edu/ | hws
+cougarhealth | https://cougarhealth.wsu.edu/ | cougarhealth
+lavienvenida | https://lavienvenida.wsu.edu/ | lavienvenida
+summeradvantage | https://summeradvantage.wsu.edu/ | summeradvantage
+family | https://family.wsu.edu/ | family
+cougscancelcovid | https://cougscancelcovid.wsu.edu/ | cougscancelcovid
+upwardbound | https://collegebound.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/upward-bound/
+
+

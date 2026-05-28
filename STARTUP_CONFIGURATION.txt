@@ -1,84 +1,43 @@
-// Add this to your Startup.cs or Program.cs in the ConfigureServices method
+Entry-level setup notes for using the packaged audit engine in another C# app.
 
-// Install NuGet packages first:
-// dotnet add package HtmlAgilityPack
-// dotnet add package EPPlus
+1. Add a reference to the package project while developing locally:
 
-// In Program.cs (for .NET 6+):
-// ============================================
+   dotnet add reference ..\PostMigrationUmbraco_SiteAudit\AuditApp.Package\AuditApp.Package.csproj
 
-var builder = WebApplication.CreateBuilder(args);
+2. Or pack it first and install the generated NuGet package:
 
-// Add Razor Pages
-builder.Services.AddRazorPages();
+   dotnet pack .\AuditApp.Package\AuditApp.Package.csproj -c Release
 
-// Register Audit Services
-builder.Services.AddScoped<UrlUtilityService>();
-builder.Services.AddScoped<AuditAnalysisService>();
-builder.Services.AddScoped<PageComparisonService>();
-builder.Services.AddScoped<ReportGenerationService>();
-builder.Services.AddScoped<AuditService>();
+3. In Program.cs for a Razor Pages app, register the package services:
 
-// Add HttpClient for URL operations
-builder.Services.AddHttpClient();
+   using AuditApp;
+   using OfficeOpenXml;
 
-var app = builder.Build();
+   var builder = WebApplication.CreateBuilder(args);
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
+   ExcelPackage.License.SetNonCommercialOrganization("Washington State University");
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
+   builder.Services.AddRazorPages();
+   builder.Services.AddMigrationAuditServices();
 
-app.UseRouting();
+   var app = builder.Build();
 
-app.UseAuthorization();
+   if (!app.Environment.IsDevelopment())
+   {
+       app.UseExceptionHandler("/Error");
+       app.UseHsts();
+   }
 
-app.MapRazorPages();
+   app.UseHttpsRedirection();
+   app.UseStaticFiles();
+   app.UseRouting();
+   app.UseAuthorization();
+   app.MapRazorPages();
+   app.Run();
 
-app.Run();
+4. Create these folders before your first audit run:
 
-// ============================================
-// In Startup.cs (for .NET Framework / older versions):
-// ============================================
+   - Audits
+   - wwwroot/reports
 
-/*
-public void ConfigureServices(IServiceCollection services)
-{
-    services.AddRazorPages();
-    services.AddHttpClient();
-    
-    // Register services
-    services.AddScoped<UrlUtilityService>();
-    services.AddScoped<AuditAnalysisService>();
-    services.AddScoped<PageComparisonService>();
-    services.AddScoped<ReportGenerationService>();
-    services.AddScoped<AuditService>();
-}
-
-public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-{
-    if (env.IsDevelopment())
-    {
-        app.UseDeveloperExceptionPage();
-    }
-    else
-    {
-        app.UseExceptionHandler("/Error");
-        app.UseHsts();
-    }
-
-    app.UseHttpsRedirection();
-    app.UseStaticFiles();
-    app.UseRouting();
-    app.UseAuthorization();
-
-    app.UseEndpoints(endpoints =>
-    {
-        endpoints.MapRazorPages();
-    });
-}
-*/
+5. If you do not want the sample dashboard UI, you only need an endpoint, page model, worker, or console command that injects AuditService and calls RunAuditAsync().

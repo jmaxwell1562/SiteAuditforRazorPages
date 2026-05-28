@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>WSU.MigrationAudit</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Washington State University</Authors>
+    <Company>Washington State University</Company>
+    <Description>Reusable C# audit engine for WSU post-migration parity checks, report generation, and readiness scoring.</Description>
+    <PackageTags>umbraco;audit;migration;razor-pages;wsu</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EPPlus" Version="8.0.8" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\AuditModels.cs" Link="Models\AuditModels.cs" />
+    <Compile Include="..\Services\AuditAnalysisService.cs" Link="Services\AuditAnalysisService.cs" />
+    <Compile Include="..\Services\AuditService.cs" Link="Services\AuditService.cs" />
+    <Compile Include="..\Services\PageComparisonService.cs" Link="Services\PageComparisonService.cs" />
+    <Compile Include="..\Services\ReportGenerationService.cs" Link="Services\ReportGenerationService.cs" />
+    <Compile Include="..\Services\UrlUtilityService.cs" Link="Services\UrlUtilityService.cs" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

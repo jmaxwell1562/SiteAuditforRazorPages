@@ -1,0 +1,15 @@
+bin/
+obj/
+.artifacts/
+.vs/
+
+Audits/
+wwwroot/reports/
+
+*.user
+*.suo
+*.cache
+*.pdb
+
+AuditApp.Package/bin/
+AuditApp.Package/obj/
