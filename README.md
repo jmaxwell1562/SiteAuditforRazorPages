@@ -116,9 +116,22 @@ Close the workbook if it is open in Excel, then rerun the audit.
 
 The audit service already tolerates local HTTPS certificate issues for localhost targets.
 
+## Recovery And Handoff
+
+If the chat history is lost or someone new needs to pick up the work, start with `SESSION_SUMMARY.md`.
+
+That file records:
+
+- the GitHub repo and branch
+- the latest pushed commits
+- the main implementation changes
+- the validation commands that passed
+- the local-only files that were intentionally not pushed
+
 ## Read Next
 
 - `QUICKSTART.md`
 - `IMPLEMENTATION_GUIDE.md`
 - `README_CSHARP_PORT.md`
 - `INTEGRATION_CHECKLIST.md`
+- `SESSION_SUMMARY.md`
