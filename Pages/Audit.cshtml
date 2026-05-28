@@ -2,7 +2,9 @@
 @model AuditApp.Pages.AuditModel
 @{
     ViewData["Title"] = "Site Audit";
-    var hasReports = Model.LatestReport != null;
+    var latestReport = Model.LatestReport;
+    var previousReport = Model.PreviousReport;
+    var hasReports = latestReport != null;
 }
 
 <style>
@@ -757,7 +759,7 @@
                     <h2>Generated Reports</h2>
                     <p>Latest published report artifacts for the current site. Desktop keeps both sections in a single row and mobile stacks them vertically.</p>
                 </div>
-                <div class="status-pill" id="report-site-pill">@(hasReports ? Model.LatestReport.SiteName : "No site selected")</div>
+                <div class="status-pill" id="report-site-pill">@(latestReport?.SiteName ?? "No site selected")</div>
             </div>
 
             <div class="reports-grid">
@@ -765,19 +767,19 @@
                     <h3>New Report</h3>
                     <p class="report-empty @(hasReports ? "hidden" : string.Empty)" id="latest-report-empty">No completed report is available yet for this site.</p>
                     <div class="report-body @(hasReports ? string.Empty : "hidden")" id="latest-report-body">
-                        <div class="report-meta" id="latest-report-time">@(hasReports ? Model.LatestReport.GeneratedAtDisplay : string.Empty)</div>
+                        <div class="report-meta" id="latest-report-time">@(latestReport?.GeneratedAtDisplay ?? string.Empty)</div>
                         <div class="report-actions">
-                            <a class="report-link" id="latest-report-link" href="@(hasReports ? Model.LatestReport.HtmlUrl : "#")" target="_blank" rel="noreferrer">Open HTML Audit Report</a>
-                            <a class="report-link secondary @(hasReports && !string.IsNullOrEmpty(Model.LatestReport.ExecutiveHtmlUrl) ? string.Empty : "hidden")" id="latest-report-executive" href="@(hasReports ? Model.LatestReport.ExecutiveHtmlUrl : "#")" target="_blank" rel="noreferrer">Open Executive Preview</a>
-                            <a class="report-link secondary @(hasReports && !string.IsNullOrEmpty(Model.LatestReport.XlsxUrl) ? string.Empty : "hidden")" id="latest-report-xlsx" href="@(hasReports ? Model.LatestReport.XlsxUrl : "#")" target="_blank" rel="noreferrer">Open Excel Workbook</a>
+                            <a class="report-link" id="latest-report-link" href="@(latestReport?.HtmlUrl ?? "#")" target="_blank" rel="noreferrer">Open HTML Audit Report</a>
+                            <a class="report-link secondary @(string.IsNullOrEmpty(latestReport?.ExecutiveHtmlUrl) ? "hidden" : string.Empty)" id="latest-report-executive" href="@(latestReport?.ExecutiveHtmlUrl ?? "#")" target="_blank" rel="noreferrer">Open Executive Preview</a>
+                            <a class="report-link secondary @(string.IsNullOrEmpty(latestReport?.XlsxUrl) ? "hidden" : string.Empty)" id="latest-report-xlsx" href="@(latestReport?.XlsxUrl ?? "#")" target="_blank" rel="noreferrer">Open Excel Workbook</a>
                         </div>
                         <div class="report-stats" id="latest-report-stats">
-                            @if (hasReports)
+                            @if (latestReport != null)
                             {
-                                <span class="report-stat">PASS @Model.LatestReport.PassCount</span>
-                                <span class="report-stat">REVIEW @Model.LatestReport.ReviewCount</span>
-                                <span class="report-stat">FAIL @Model.LatestReport.FailCount</span>
-                                <span class="report-stat">REDIRECT @Model.LatestReport.RedirectCount</span>
+                                <span class="report-stat">PASS @latestReport.PassCount</span>
+                                <span class="report-stat">REVIEW @latestReport.ReviewCount</span>
+                                <span class="report-stat">FAIL @latestReport.FailCount</span>
+                                <span class="report-stat">REDIRECT @latestReport.RedirectCount</span>
                             }
                         </div>
                     </div>
@@ -785,9 +787,9 @@
 
                 <article class="report-card" id="previous-report-card">
                     <h3>Previous Report</h3>
-                    <p class="report-empty @(Model.PreviousReport != null ? "hidden" : string.Empty)" id="previous-report-empty">No prior report history is available yet for this site.</p>
-                    <div class="report-body @(Model.PreviousReport != null ? string.Empty : "hidden")" id="previous-report-body">
-                        <div class="report-meta" id="previous-report-time">@(Model.PreviousReport?.GeneratedAtDisplay ?? string.Empty)</div>
+                    <p class="report-empty @(previousReport != null ? "hidden" : string.Empty)" id="previous-report-empty">No prior report history is available yet for this site.</p>
+                    <div class="report-body @(previousReport != null ? string.Empty : "hidden")" id="previous-report-body">
+                        <div class="report-meta" id="previous-report-time">@(previousReport?.GeneratedAtDisplay ?? string.Empty)</div>
                         <div class="report-actions">
                             <a class="report-link secondary" id="previous-report-link" href="@(Model.PreviousReport?.HtmlUrl ?? "#")" target="_blank" rel="noreferrer">Open Previous Report</a>
                             <a class="report-link secondary @(Model.PreviousReport != null && !string.IsNullOrEmpty(Model.PreviousReport.ExecutiveHtmlUrl) ? string.Empty : "hidden")" id="previous-report-executive" href="@(Model.PreviousReport?.ExecutiveHtmlUrl ?? "#")" target="_blank" rel="noreferrer">Open Previous Executive Preview</a>

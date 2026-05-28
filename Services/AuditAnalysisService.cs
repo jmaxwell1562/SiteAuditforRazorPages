@@ -346,7 +346,7 @@ namespace AuditApp.Services
 
             foreach (var result in results)
             {
-                if (counts.ContainsKey(result.Status ?? ""))
+                if (!string.IsNullOrEmpty(result.Status) && counts.ContainsKey(result.Status))
                     counts[result.Status]++;
             }
 

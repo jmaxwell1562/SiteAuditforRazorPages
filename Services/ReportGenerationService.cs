@@ -625,7 +625,7 @@ namespace AuditApp.Services
             throw new IOException($"Unable to access report file '{filePath}' after multiple attempts.");
         }
 
-        private static string EscapeCsv(string value)
+        private static string EscapeCsv(string? value)
         {
             var safe = value ?? string.Empty;
             if (safe.Contains('"'))
@@ -641,7 +641,7 @@ namespace AuditApp.Services
             return safe;
         }
 
-        private static string EscapeHtml(string value)
+        private static string EscapeHtml(string? value)
         {
             return WebUtility.HtmlEncode(value ?? string.Empty);
         }
@@ -930,16 +930,16 @@ namespace AuditApp.Services
 
         private sealed class SectionReadinessRow
         {
-            public string Section { get; set; }
-            public string TestSite { get; set; }
+            public string Section { get; set; } = string.Empty;
+            public string TestSite { get; set; } = string.Empty;
             public int TotalPages { get; set; }
             public int BlockerCount { get; set; }
             public int NonBlockerCount { get; set; }
             public int SystemicClusterCount { get; set; }
             public double ReadinessScore { get; set; }
-            public string ReadinessLabel { get; set; }
-            public string GoNoGo { get; set; }
-            public string SummaryReason { get; set; }
+            public string ReadinessLabel { get; set; } = string.Empty;
+            public string GoNoGo { get; set; } = string.Empty;
+            public string SummaryReason { get; set; } = string.Empty;
         }
 
         private const string FilterScript = """

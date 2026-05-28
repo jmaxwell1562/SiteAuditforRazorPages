@@ -8,9 +8,9 @@ namespace AuditApp.Models
     /// </summary>
     public class AuditConfig
     {
-        public string SiteName { get; set; }
-        public string SourceUrl { get; set; }
-        public string TestUrl { get; set; }
+        public string SiteName { get; set; } = string.Empty;
+        public string SourceUrl { get; set; } = string.Empty;
+        public string TestUrl { get; set; } = string.Empty;
         public bool SourceIsSubdomain { get; set; }
         public string TestSlug { get; set; } = "/";
         public string TestScope { get; set; } = "single"; // single, instance
@@ -28,21 +28,21 @@ namespace AuditApp.Models
     /// </summary>
     public class AuditResult
     {
-        public string Path { get; set; }
-        public string SourceUrl { get; set; }
-        public string TestUrl { get; set; }
-        public string TestSite { get; set; }
+        public string Path { get; set; } = string.Empty;
+        public string? SourceUrl { get; set; }
+        public string TestUrl { get; set; } = string.Empty;
+        public string TestSite { get; set; } = string.Empty;
         public int? SourceStatus { get; set; }
         public int? TestStatus { get; set; }
         public double Score { get; set; } // 0.0 to 1.0 similarity
-        public string Status { get; set; } // PASS, SOFT PASS, REVIEW, FAIL, SKIP, ERROR
-        public string Note { get; set; }
-        public string RootCause { get; set; }
+        public string Status { get; set; } = string.Empty; // PASS, SOFT PASS, REVIEW, FAIL, SKIP, ERROR
+        public string? Note { get; set; }
+        public string? RootCause { get; set; }
         public bool IsRedirect { get; set; }
-        public string Section { get; set; }
-        public string FailureCluster { get; set; }
+        public string Section { get; set; } = string.Empty;
+        public string? FailureCluster { get; set; }
         public bool SystemicBreakage { get; set; }
-        public string SystemicReason { get; set; }
+        public string? SystemicReason { get; set; }
     }
 
     /// <summary>
@@ -50,16 +50,16 @@ namespace AuditApp.Models
     /// </summary>
     public class FailureCluster
     {
-        public string ClusterId { get; set; }
-        public string TestSite { get; set; }
-        public string Section { get; set; }
-        public string Signature { get; set; }
+        public string ClusterId { get; set; } = string.Empty;
+        public string TestSite { get; set; } = string.Empty;
+        public string Section { get; set; } = string.Empty;
+        public string Signature { get; set; } = string.Empty;
         public int FailuresInCluster { get; set; }
         public int SectionFailures { get; set; }
         public int SectionsWithSignature { get; set; }
         public int TotalFailuresWithSignature { get; set; }
         public bool SystemicBreakage { get; set; }
-        public string SystemicReason { get; set; }
+        public string SystemicReason { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -78,11 +78,11 @@ namespace AuditApp.Models
     /// </summary>
     public class AuditSummary
     {
-        public string SiteName { get; set; }
-        public string SafeSiteName { get; set; }
-        public string RunDate { get; set; }
-        public string Timestamp { get; set; }
-        public string AuditFolder { get; set; }
+        public string SiteName { get; set; } = string.Empty;
+        public string SafeSiteName { get; set; } = string.Empty;
+        public string RunDate { get; set; } = string.Empty;
+        public string Timestamp { get; set; } = string.Empty;
+        public string AuditFolder { get; set; } = string.Empty;
 
         // Count results
         public int PassCount { get; set; }
@@ -93,12 +93,12 @@ namespace AuditApp.Models
         public int ErrorCount { get; set; }
 
         // Files generated
-        public string MainCsvPath { get; set; }
-        public string ClusterCsvPath { get; set; }
-        public string ReadinessCsvPath { get; set; }
-        public string HtmlReportPath { get; set; }
-        public string ExecutiveHtmlPath { get; set; }
-        public string XlsxPath { get; set; }
+        public string MainCsvPath { get; set; } = string.Empty;
+        public string ClusterCsvPath { get; set; } = string.Empty;
+        public string ReadinessCsvPath { get; set; } = string.Empty;
+        public string HtmlReportPath { get; set; } = string.Empty;
+        public string ExecutiveHtmlPath { get; set; } = string.Empty;
+        public string XlsxPath { get; set; } = string.Empty;
 
         // Readiness
         public ReadinessStatus Readiness { get; set; } = new();
@@ -112,18 +112,18 @@ namespace AuditApp.Models
 
     public class ReportHistoryEntry
     {
-        public string SiteName { get; set; }
-        public string AuditFolder { get; set; }
-        public string HtmlFilePath { get; set; }
-        public string HtmlFileName { get; set; }
-        public string HtmlUrl { get; set; }
-        public string ExecutiveHtmlPath { get; set; }
-        public string ExecutiveHtmlUrl { get; set; }
-        public string MainCsvPath { get; set; }
-        public string MainCsvUrl { get; set; }
-        public string XlsxPath { get; set; }
-        public string XlsxUrl { get; set; }
-        public string TimestampToken { get; set; }
+        public string SiteName { get; set; } = string.Empty;
+        public string AuditFolder { get; set; } = string.Empty;
+        public string HtmlFilePath { get; set; } = string.Empty;
+        public string HtmlFileName { get; set; } = string.Empty;
+        public string HtmlUrl { get; set; } = string.Empty;
+        public string? ExecutiveHtmlPath { get; set; }
+        public string? ExecutiveHtmlUrl { get; set; }
+        public string? MainCsvPath { get; set; }
+        public string? MainCsvUrl { get; set; }
+        public string? XlsxPath { get; set; }
+        public string? XlsxUrl { get; set; }
+        public string TimestampToken { get; set; } = string.Empty;
         public DateTime GeneratedAt { get; set; }
         public int PassCount { get; set; }
         public int SoftPassCount { get; set; }
@@ -150,7 +150,7 @@ namespace AuditApp.Models
     /// </summary>
     public class TestBase
     {
-        public string Url { get; set; }
-        public string Label { get; set; }
+        public string Url { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
     }
 }

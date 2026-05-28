@@ -40,7 +40,7 @@ namespace AuditApp.Services
         /// <summary>
         /// Main audit entry point
         /// </summary>
-        public async Task<AuditSummary> RunAuditAsync(AuditConfig config, IProgress<string> progress = null)
+        public async Task<AuditSummary> RunAuditAsync(AuditConfig config, IProgress<string>? progress = null)
         {
             var summary = new AuditSummary
             {
@@ -154,7 +154,7 @@ namespace AuditApp.Services
         /// <summary>
         /// Discover paths from sitemap or crawling
         /// </summary>
-        private async Task<List<string>> DiscoverPathsAsync(string sourceUrl, string testBase, int maxPaths, IProgress<string> progress)
+        private async Task<List<string>> DiscoverPathsAsync(string sourceUrl, string testBase, int maxPaths, IProgress<string>? progress)
         {
             var discoveredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/" };
             var normalizedSource = _urlService.NormalizeSiteBase(sourceUrl);
@@ -186,7 +186,7 @@ namespace AuditApp.Services
             return orderedPaths;
         }
 
-        private async Task<int> DiscoverPathsFromSitemapAsync(string sourceBase, HashSet<string> paths, int limit, IProgress<string> progress)
+        private async Task<int> DiscoverPathsFromSitemapAsync(string sourceBase, HashSet<string> paths, int limit, IProgress<string>? progress)
         {
             var visitedSitemaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var candidates = new[]
@@ -212,7 +212,7 @@ namespace AuditApp.Services
             HashSet<string> paths,
             HashSet<string> visitedSitemaps,
             int limit,
-            IProgress<string> progress)
+            IProgress<string>? progress)
         {
             if (string.IsNullOrWhiteSpace(sitemapUrl)
                 || paths.Count >= limit
@@ -260,7 +260,7 @@ namespace AuditApp.Services
             }
         }
 
-        private async Task CrawlSourcePathsAsync(string sourceBase, HashSet<string> paths, int limit, IProgress<string> progress)
+        private async Task CrawlSourcePathsAsync(string sourceBase, HashSet<string> paths, int limit, IProgress<string>? progress)
         {
             var visitedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var pendingPaths = new Queue<string>();
@@ -326,7 +326,7 @@ namespace AuditApp.Services
                 return false;
             }
 
-            Uri resolvedUri;
+            Uri? resolvedUri;
             if (Uri.TryCreate(candidateUrl, UriKind.Absolute, out var absoluteUri))
             {
                 resolvedUri = absoluteUri;
@@ -397,7 +397,7 @@ namespace AuditApp.Services
         /// Discover test base URLs for instance scope
         /// </summary>
         private async Task<List<TestBase>> DiscoverTestBasesAsync(
-            string scope, string seedBase, string allowlist, string allowlistFile, IProgress<string> progress)
+            string scope, string seedBase, string allowlist, string allowlistFile, IProgress<string>? progress)
         {
             var testBases = new List<TestBase>
             {
@@ -535,7 +535,7 @@ namespace AuditApp.Services
             HashSet<string> redirectOverrides,
             int maxConcurrency,
             bool sourceIsSubdomain,
-            IProgress<string> progress)
+            IProgress<string>? progress)
         {
             var results = new List<AuditResult>();
             var semaphore = new SemaphoreSlim(maxConcurrency);
@@ -584,7 +584,7 @@ namespace AuditApp.Services
             try
             {
                 // Construct URLs
-                var sourceUrl = !string.IsNullOrEmpty(sourceBase) ? _urlService.JoinSourceUrl(sourceBase, path) : null;
+                string? sourceUrl = !string.IsNullOrEmpty(sourceBase) ? _urlService.JoinSourceUrl(sourceBase, path) : null;
                 var testUrl = _urlService.JoinTestUrl(testBase, path, sourceBase, sourceIsSubdomain);
 
                 result.SourceUrl = sourceUrl;
@@ -629,7 +629,7 @@ namespace AuditApp.Services
                 // Fetch and compare content (if applicable)
                 if (sourceStatus == 200 && testStatus == 200)
                 {
-                    var score = await _comparisonService.CompareUrlsAsync(sourceUrl, testUrl);
+                    var score = await _comparisonService.CompareUrlsAsync(sourceUrl!, testUrl);
                     result.Score = score;
 
                     if (score >= AuditAnalysisService.PassThreshold)
@@ -661,7 +661,7 @@ namespace AuditApp.Services
         /// <summary>
         /// Generate CSV, Excel, and HTML reports
         /// </summary>
-        private async Task GenerateReportsAsync(AuditSummary summary, IProgress<string> progress)
+        private async Task GenerateReportsAsync(AuditSummary summary, IProgress<string>? progress)
         {
             progress?.Report("Writing CSV...");
             summary.MainCsvPath = await _reportService.WriteCsvAsync(summary);

@@ -44,9 +44,9 @@ namespace AuditApp.Pages
         [BindProperty]
         public string CustomTestUrl { get; set; } = string.Empty;
 
-        public AuditSummary LastSummary { get; set; }
-        public ReportHistoryEntry LatestReport { get; set; }
-        public ReportHistoryEntry PreviousReport { get; set; }
+        public AuditSummary? LastSummary { get; set; }
+        public ReportHistoryEntry? LatestReport { get; set; }
+        public ReportHistoryEntry? PreviousReport { get; set; }
         public ReportHistoryComparison PreviousComparison { get; set; } = new();
         public List<string> StatusMessages { get; set; } = new();
         public string RunButtonState { get; set; } = "Ready";
@@ -154,7 +154,7 @@ namespace AuditApp.Pages
             }
 
             var messages = new List<string>();
-            ReportHistoryEntry previousLatest = null;
+            ReportHistoryEntry? previousLatest = null;
             var progress = new Progress<string>(msg =>
             {
                 messages.Add(msg);
@@ -365,7 +365,7 @@ namespace AuditApp.Pages
             return _urlService.NormalizeSiteBase(trimmed);
         }
 
-        private static bool IsPresetTestUrl(string value)
+        private static bool IsPresetTestUrl(string? value)
         {
             return TestUrlOptions.Any(option => string.Equals(option, value, StringComparison.OrdinalIgnoreCase));
         }
@@ -409,12 +409,13 @@ namespace AuditApp.Pages
             return Directory
                 .EnumerateFiles(auditsRoot, "*_audit_report_*.html", SearchOption.AllDirectories)
                 .Select(BuildHistoryEntry)
-                .Where(entry => entry != null && NormalizeSiteKey(entry.SiteName) == siteKey)
+                .OfType<ReportHistoryEntry>()
+                .Where(entry => NormalizeSiteKey(entry.SiteName) == siteKey)
                 .OrderByDescending(entry => entry.GeneratedAt)
                 .ToList();
         }
 
-        private ReportHistoryEntry BuildHistoryEntry(string htmlPath)
+        private ReportHistoryEntry? BuildHistoryEntry(string htmlPath)
         {
             var fileName = Path.GetFileName(htmlPath);
             var match = TimestampedReportPattern.Match(fileName);
@@ -490,7 +491,7 @@ namespace AuditApp.Pages
             }
         }
 
-        private static ReportHistoryComparison BuildComparison(ReportHistoryEntry latest, ReportHistoryEntry previous)
+        private static ReportHistoryComparison BuildComparison(ReportHistoryEntry? latest, ReportHistoryEntry? previous)
         {
             if (latest == null || previous == null)
                 return new ReportHistoryComparison();
@@ -676,18 +677,18 @@ namespace AuditApp.Pages
 
         private sealed class BatchAuditPlanEntry
         {
-            public string SiteName { get; set; }
-            public string SourceUrl { get; set; }
-            public string TestUrl { get; set; }
+            public string SiteName { get; set; } = string.Empty;
+            public string SourceUrl { get; set; } = string.Empty;
+            public string TestUrl { get; set; } = string.Empty;
             public bool SourceIsSubdomain { get; set; }
         }
 
         private sealed class BatchAuditRunResult
         {
-            public string SiteName { get; set; }
-            public ReportHistoryEntry LatestReport { get; set; }
+            public string SiteName { get; set; } = string.Empty;
+            public ReportHistoryEntry? LatestReport { get; set; }
             public bool IsSuccess { get; set; }
-            public string ErrorMessage { get; set; }
+            public string? ErrorMessage { get; set; }
         }
     }
 }
