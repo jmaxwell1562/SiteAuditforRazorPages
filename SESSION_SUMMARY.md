@@ -17,6 +17,7 @@
 - Updated setup documentation for entry-level developers
 - Added a root `README.md` with clone, build, run, and smoke-test steps
 - Reduced nullable warnings and reached a clean validated build in the alternate output path
+- Documented the preferred consumer-app integration pattern where `/Audit` submits a run and successful results hand off to a dedicated `/Audit/Results` page with report links
 
 ## Main Files Added or Updated
 

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -72,8 +71,14 @@ namespace AuditApp.Services
                 // Auto-correct host mismatch if needed
                 testBase = await _urlService.MaybeCorrectTestBaseAsync(config.SourceUrl, testBase, paths, config.SourceIsSubdomain);
 
-                // Discover test bases for instance scope
-                var testBases = await DiscoverTestBasesAsync(config.TestScope, testBase, config.TestAllowlist, config.TestAllowlistFile, progress);
+                var testBases = new List<TestBase>
+                {
+                    new TestBase
+                    {
+                        Url = testBase,
+                        Label = _urlService.TestSiteLabel(testBase)
+                    }
+                };
                 progress?.Report($"Test bases: {string.Join(", ", testBases.Select(t => t.Label))}");
 
                 // Audit each path
@@ -394,137 +399,6 @@ namespace AuditApp.Services
         }
 
         /// <summary>
-        /// Discover test base URLs for instance scope
-        /// </summary>
-        private async Task<List<TestBase>> DiscoverTestBasesAsync(
-            string scope, string seedBase, string allowlist, string allowlistFile, IProgress<string>? progress)
-        {
-            var testBases = new List<TestBase>
-            {
-                new TestBase { Url = seedBase, Label = _urlService.TestSiteLabel(seedBase) }
-            };
-
-            if (scope == "single")
-                return await Task.FromResult(testBases);
-
-            var (labels, urls) = ParseAllowlist(allowlist, allowlistFile);
-            var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { seedBase };
-
-            foreach (var url in urls)
-            {
-                var normalizedUrl = _urlService.NormalizeSiteBase(url);
-                if (string.IsNullOrWhiteSpace(normalizedUrl) || !seenUrls.Add(normalizedUrl))
-                    continue;
-
-                testBases.Add(new TestBase
-                {
-                    Url = normalizedUrl,
-                    Label = _urlService.TestSiteLabel(normalizedUrl)
-                });
-            }
-
-            if (Uri.TryCreate(_urlService.NormalizeSiteBase(seedBase), UriKind.Absolute, out var seedUri))
-            {
-                var hostRoot = $"{seedUri.Scheme}://{seedUri.Host}";
-                if (seedUri.Port != 80 && seedUri.Port != 443 && seedUri.Port != -1)
-                    hostRoot += $":{seedUri.Port}";
-
-                foreach (var label in labels)
-                {
-                    var cleanedLabel = label.Trim('/');
-                    if (string.IsNullOrWhiteSpace(cleanedLabel))
-                        continue;
-
-                    var siblingBase = _urlService.NormalizeSiteBase($"{hostRoot}/{cleanedLabel}");
-                    if (!seenUrls.Add(siblingBase))
-                        continue;
-
-                    testBases.Add(new TestBase
-                    {
-                        Url = siblingBase,
-                        Label = cleanedLabel
-                    });
-                }
-            }
-
-            if (scope == "instance" && testBases.Count == 1)
-            {
-                progress?.Report("Instance scope selected, but no sibling allowlist entries were supplied; auditing the selected test site only.");
-            }
-
-            return await Task.FromResult(testBases);
-        }
-
-        /// <summary>
-        /// Parse allowlist from string and file
-        /// </summary>
-        private (HashSet<string> labels, HashSet<string> urls) ParseAllowlist(string raw, string filePath)
-        {
-            var labels = new HashSet<string>();
-            var urls = new HashSet<string>();
-
-            if (!string.IsNullOrEmpty(raw))
-            {
-                foreach (var item in SplitAllowlistTokens(raw))
-                {
-                    AddAllowlistToken(item, labels, urls);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
-            {
-                try
-                {
-                    foreach (var line in File.ReadLines(filePath, Encoding.UTF8))
-                    {
-                        string cleaned = line.Trim();
-                        if (string.IsNullOrEmpty(cleaned) || cleaned.StartsWith("#"))
-                            continue;
-
-                        foreach (var item in SplitAllowlistTokens(cleaned))
-                        {
-                            AddAllowlistToken(item, labels, urls);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[WARN] Failed to read allowlist file: {ex.Message}");
-                }
-            }
-
-            return (labels, urls);
-        }
-
-        private static IEnumerable<string> SplitAllowlistTokens(string raw)
-        {
-            return (raw ?? string.Empty)
-                .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(token => token.Trim())
-                .Where(token => !string.IsNullOrWhiteSpace(token));
-        }
-
-        private static void AddAllowlistToken(string rawToken, HashSet<string> labels, HashSet<string> urls)
-        {
-            var token = (rawToken ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(token))
-                return;
-
-            if (token.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                || token.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                urls.Add(token.TrimEnd('/').ToLower());
-                return;
-            }
-
-            foreach (var label in token.Split('/', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var cleanedLabel = label.Trim().Trim('/').ToLower();
-                if (!string.IsNullOrWhiteSpace(cleanedLabel))
-                    labels.Add(cleanedLabel);
-            }
-        }
-
         /// <summary>
         /// Audit all paths across all test bases
         /// </summary>
@@ -550,7 +424,13 @@ namespace AuditApp.Services
                         await semaphore.WaitAsync();
                         try
                         {
-                            var result = await AuditPageAsync(sourceBase, testBase.Url, path, testBase.Label, redirectOverrides, sourceIsSubdomain);
+                            var result = await AuditPageAsync(
+                                sourceBase,
+                                testBase.Url,
+                                path,
+                                testBase.Label,
+                                redirectOverrides,
+                                sourceIsSubdomain || testBase.PreserveBasePath);
                             lock (results)
                             {
                                 results.Add(result);
@@ -572,7 +452,7 @@ namespace AuditApp.Services
         /// Audit a single page
         /// </summary>
         private async Task<AuditResult> AuditPageAsync(
-            string sourceBase, string testBase, string path, string testSiteLabel, HashSet<string> redirectOverrides, bool sourceIsSubdomain)
+            string sourceBase, string testBase, string path, string testSiteLabel, HashSet<string> redirectOverrides, bool forcePrefixBasePath)
         {
             var result = new AuditResult
             {
@@ -585,7 +465,7 @@ namespace AuditApp.Services
             {
                 // Construct URLs
                 string? sourceUrl = !string.IsNullOrEmpty(sourceBase) ? _urlService.JoinSourceUrl(sourceBase, path) : null;
-                var testUrl = _urlService.JoinTestUrl(testBase, path, sourceBase, sourceIsSubdomain);
+                var testUrl = _urlService.JoinTestUrl(testBase, path, sourceBase, forcePrefixBasePath);
 
                 result.SourceUrl = sourceUrl;
                 result.TestUrl = testUrl;

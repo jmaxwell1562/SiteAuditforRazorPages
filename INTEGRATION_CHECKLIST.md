@@ -112,9 +112,12 @@ This version assumes you are consuming the reusable package project instead of m
   - [ ] No exceptions thrown
 
 - [ ] Results display
-  - [ ] New Report and Previous Report cards render correctly
+  - [ ] Host-specific success view renders correctly
+  - [ ] If using the sample dashboard, New Report and Previous Report cards render correctly
+  - [ ] If using an embedded runner flow, success redirects to a dedicated results page
   - [ ] Executive preview link appears when executive HTML is generated
   - [ ] HTML and Excel report links present
+  - [ ] No permanent loading placeholder remains visible after the runner hydrates
 
 - [ ] Reports generated
   - [ ] CSV file created
@@ -192,6 +195,11 @@ This version assumes you are consuming the reusable package project instead of m
 - [ ] Audit page accessible from main menu
   - [ ] Link in navigation
   - [ ] Breadcrumb correct
+
+- [ ] If using a dedicated results page
+  - [ ] `/Audit/Results` or equivalent route is reachable after a successful run
+  - [ ] HTML report is the primary linked artifact
+  - [ ] Inline HTML preview works if the host is configured to show one
 
 - [ ] Report folder served correctly
   - [ ] HTTP routes working

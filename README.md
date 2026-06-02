@@ -89,6 +89,16 @@ builder.Services.AddRazorPages();
 builder.Services.AddMigrationAuditServices();
 ```
 
+If your UI is a browser client such as Blazor WebAssembly, keep `WSU.MigrationAudit` in the server/web host and call it through a server-side API or page handler. Do not place `AuditApp` or `OfficeOpenXml` in the browser client project.
+
+For host applications that embed a browser client inside a server-rendered `/Audit` page, prefer this flow:
+
+- submit the audit from the embedded runner on `/Audit`
+- return a typed server response that contains report metadata and route-safe report links
+- redirect successful runs to a dedicated results page such as `/Audit/Results`
+- show the HTML report link and related artifact links there, and optionally preview the HTML report inline
+- avoid leaving a permanent static loading placeholder under the mounted runner component
+
 ## Project Layout
 
 - `AuditApp.Package/`: reusable package project
@@ -111,6 +121,10 @@ dotnet build .\PostMigrationUmbraco_SiteAudit.csproj -o .\.artifacts\validate /p
 ### The Excel report will not generate
 
 Close the workbook if it is open in Excel, then rerun the audit.
+
+### The audit runner still shows a loading placeholder after the page loads
+
+For embedded WebAssembly runners, keep the Razor Page fallback limited to initial hydration. Do not leave a permanent static `Loading audit runner...` block visible after the component mounts or after success redirects to a results page.
 
 ### My target app uses localhost with HTTPS
 

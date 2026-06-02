@@ -1,0 +1,26 @@
+# Site Name | Source URL | Test Path or Full Test URL
+# Blank lines and lines that start with # are ignored.
+# The third column can be either a test path under the shared Test URL or a full test URL.
+
+
+accommodations | https://accommodations.wsu.edu/ | accommodations
+aastudentcenter | https://aastudentcenter.wsu.edu/ | aastudentcenter
+culturalcenter | https://culturalcenter.wsu.edu/ | https://w3-testing.asis.wsu.edu/culturalcenter/
+studentfees | https://studentfees.wsu.edu/ | studentfees
+
+aea | https://aea.wsu.edu/ | aea
+first | https://first.wsu.edu/ | first
+communitystandards | https://studentaffairs.wsu.edu/communitystandards/ | communitystandards
+studentaffairs | https://studentaffairs.wsu.edu/ | studentaffairs
+communities | https://studentaffairs.wsu.edu/communities/ | https://w3-testing.asis.wsu.edu/communities/
+studentcare | https://studentcare.wsu.edu/ | https://w3-testing.asis.wsu.edu/studentcare/
+deanofstudents | https://deanofstudents.wsu.edu/ | https://w3-testing.asis.wsu.edu/deanofstudents/
+cougarhealth | https://cougarhealth.wsu.edu/ | https://w3-testing.asis.wsu.edu/chs/
+
+family | https://family.wsu.edu/ | family
+camp | https://camp.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/camp/
+hep | https://hep.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/hep/
+upwardbound | https://collegebound.wsu.edu/ | https://w3-testing.asis.wsu.edu/aea/upward-bound/
+
+
+

@@ -14,6 +14,8 @@ One prompt should be enough to:
 
 The expected result is the current production dashboard behavior, not a partial scaffold. That includes the explicit subdomain-to-subpath control, `New Report` and `Previous Report`, HTML and executive preview links, an openable Excel workbook link, no separate CSV button in the dashboard UI, section-based HTML report output, and a plain-English file-lock message when an Excel workbook is open.
 
+When the packaged audit engine is consumed inside another host application instead of this dashboard, the preferred UX is to submit the audit from an `/Audit` runner page and, on success, navigate to a dedicated results page such as `/Audit/Results` that surfaces the HTML report, executive preview, Excel workbook, and any inline HTML preview.
+
 ## Current Host
 
 - Host type: ASP.NET Core Razor Pages
@@ -29,14 +31,13 @@ The expected result is the current production dashboard behavior, not a partial 
    - Site Name input
    - Source URL textbox
    - Required Test URL dropdown with preset environments and a Custom URL option
-   - Single Site vs Entire Umbraco Instance mode selector
+   - Single Site vs External Batch Run mode selector
    - Explicit subdomain-to-subpath control for source-subdomain to test-subpath migrations
-   - Optional max paths, max tabs, redirect overrides, and Test Allowlist / Test Allowlist File inputs that are shown for instance coverage runs
-   - Instance coverage should let one audit compare the same source site against sibling test sites that live in the same Umbraco instance
+   - Optional max paths, max tabs, redirect overrides, and Batch Site Mappings File input for external batch runs
+   - External batch runs should launch separate audits for each mapping row instead of combining multiple source sites into one report
    - Source path discovery comes from the source sitemap and source-host links, not from test-site links or Umbraco backoffice structure
-   - Full allowlist target URLs with path prefixes such as `https://w3-testing.asis.wsu.edu/aea/camp/` are valid and must preserve that path prefix during audit URL construction
    - If users enter a source or custom test hostname without `https://`, normalize it automatically before the audit runs
-   - Allowlist files should support one label or full URL per line, plus blank lines and `#` comments
+   - Batch mappings files should support one site per line in the format `Site Name | Source URL | Test Path or Full Test URL`, plus blank lines and `#` comments
    - The redirect field should be presented to users as Intentional Redirect Paths; it is only for paths that are intentionally redirected on the test site and does not remap one URL to another
    - Localhost audits supported for target sites running on port 7019
 
@@ -46,7 +47,10 @@ The expected result is the current production dashboard behavior, not a partial 
    - Duration notice for quick versus full runs
    - Error state when preflight stops before fresh report generation
    - Per-site report history refresh when Site Name changes or loses focus
-   - Instance coverage support that keeps the run feedback compact and publishes one report containing sibling test-site comparisons
+   - External batch run support that keeps the run feedback compact while launching one published report set per mapping row
+   - Embedded consumer-app runners should not leave a permanent loading placeholder visible after the component hydrates
+   - Embedded consumer-app runners may redirect to a dedicated results page after a successful run rather than leaving the user on the runner surface
+   - Embedded consumer-app runners should keep saved examples secondary to paste-or-file workflows for allowlists and batch mappings, so the main runner stays focused on user-managed inputs
 
 3. Report management
    - Generated Reports below the configuration form
@@ -72,6 +76,7 @@ The expected result is the current production dashboard behavior, not a partial 
 7. Keep report links route-based through `/reports/<filename>` and do not use `file://` links.
 8. Keep the dashboard surface intentionally narrow: no summary counts, release readiness, or Queue B panels on the main page.
 9. Keep the prompts synchronized with the current dashboard behavior: `Migration_Verification_Prompt.md`, `Migration_Verification_Prompt_Quick.md`, and this file should be updated together when behavior, layout, controls, or labels change.
+10. If a consumer app integrates the package with a dedicated results route, document that runner-to-results handoff pattern in the implementation docs rather than describing it as the primary behavior of this Razor Pages dashboard host.
 
 ## Execution Notes
 

@@ -4,6 +4,8 @@
 
 A complete, production-ready C# port of your Python `audit.py` website migration auditor, built for ASP.NET Core Razor Pages and extracted into a reusable package project.
 
+For consuming applications, the current recommended UX is to keep the audit engine on the server side, submit runs from an `/Audit` page, and redirect successful runs to a dedicated results page such as `/Audit/Results` that shows the HTML report and related artifacts.
+
 ## Package Entry Point
 
 The reusable package project now lives at `AuditApp.Package/AuditApp.Package.csproj`.
@@ -112,7 +114,7 @@ The reusable package project now lives at `AuditApp.Package/AuditApp.Package.csp
 ✅ **Razor Pages Integration**
 - Bind configuration from form
 - Display real-time progress
-- Show summary statistics
+- Redirect successful embedded-runner flows to a dedicated results page when appropriate
 - Generate downloadable reports
 - Mobile-responsive UI
 
@@ -151,6 +153,7 @@ Microsoft.AspNetCore.Mvc
    ```
 2. **Reference the package from your target app:**
    ```bash
+   cd path/to/your/app
    dotnet add package WSU.MigrationAudit --source <your-package-feed>
    ```
    Or use a local project reference to `AuditApp.Package.csproj` while integrating inside this repo.

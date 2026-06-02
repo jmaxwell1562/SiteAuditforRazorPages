@@ -13,9 +13,7 @@ namespace AuditApp.Models
         public string TestUrl { get; set; } = string.Empty;
         public bool SourceIsSubdomain { get; set; }
         public string TestSlug { get; set; } = "/";
-        public string TestScope { get; set; } = "single"; // single, instance
-        public string TestAllowlist { get; set; } = "";
-        public string TestAllowlistFile { get; set; } = "";
+        public string TestScope { get; set; } = "single"; // single, batch
         public string BatchSiteMappings { get; set; } = ""; // legacy compatibility
         public string BatchSiteMappingsFile { get; set; } = ""; // legacy compatibility
         public string RedirectOverridePaths { get; set; } = "";
@@ -146,11 +144,12 @@ namespace AuditApp.Models
     }
 
     /// <summary>
-    /// Test base variant (for instance scope discovery)
+    /// Test base variant for an audit run
     /// </summary>
     public class TestBase
     {
         public string Url { get; set; } = string.Empty;
         public string Label { get; set; } = string.Empty;
+        public bool PreserveBasePath { get; set; }
     }
 }

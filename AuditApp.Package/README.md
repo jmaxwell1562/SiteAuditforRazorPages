@@ -28,3 +28,9 @@ var summary = await auditService.RunAuditAsync(new AuditConfig
 ```
 
 Reports are written to the `Audits` folder configured by the calling application.
+
+The package is intentionally host-agnostic. A consuming web application should usually:
+
+- map package output file paths to route-safe report URLs such as `/reports/<filename>`
+- return host-owned DTOs from its API instead of exposing `AuditConfig` directly to the browser
+- redirect successful runs from its runner page to a dedicated results page when that produces a cleaner UX

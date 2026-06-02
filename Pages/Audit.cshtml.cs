@@ -297,15 +297,9 @@ namespace AuditApp.Pages
             Config.TestScope = normalizedScope switch
             {
                 "batch" => "batch",
-                "instance" => "instance",
                 "ask" => "single",
                 _ => "single"
             };
-        }
-
-        private bool IsInstanceModeSelected()
-        {
-            return string.Equals(Config.TestScope, "instance", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsLegacyBatchModeSelected()

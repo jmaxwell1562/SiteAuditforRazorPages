@@ -8,6 +8,13 @@
 }
 
 <style>
+    button, input, optgroup, select, textarea {
+        font-family: inherit;
+        font-size: 100%;
+        line-height: 1.15;
+        margin: 0;
+        min-height: 60px;
+    }
     :root {
         --wsu-crimson: #981e32;
         --wsu-crimson-deep: #7f182b;
@@ -648,11 +655,11 @@
 
         <form method="post" class="audit-form" id="audit-form">
             <h2>Audit Configuration</h2>
-            <p class="section-note">Source URL, Test URL, and Site Name are required. Use Entire Umbraco Instance when one audit should compare the same source against multiple sibling sites in a single Umbraco instance.</p>
+            <p class="section-note">Source URL, Test URL, and Site Name are required for single-site audits. External batch runs use the selected test environment plus a mappings file with one site per line.</p>
 
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-            <div class="form-row">
+            <div class="form-row" id="single-site-fields">
                 <div class="form-group">
                     <label asp-for="Config.SiteName">Site Name *</label>
                     <input asp-for="Config.SiteName" placeholder="e.g., Cougar Card, Handbook" autocomplete="off" />
@@ -692,9 +699,9 @@
                     <label asp-for="Config.TestScope">Test Scope</label>
                     <select asp-for="Config.TestScope" id="Config_TestScope">
                         <option value="single">Single Site</option>
-                        <option value="instance">Entire Umbraco Instance</option>
+                        <option value="batch">External Batch Run</option>
                     </select>
-                    <div class="input-help">Use <strong>Single Site</strong> for one source-to-test comparison. Use <strong>Entire Umbraco Instance</strong> to include sibling test sites from the same test instance in one audit report.</div>
+                    <div class="input-help">Use <strong>Single Site</strong> for one source-to-test comparison. Use <strong>External Batch Run</strong> when a file should launch separate audits for multiple source sites.</div>
                 </div>
             </div>
 
@@ -721,16 +728,10 @@
                     </div>
                 </div>
 
-                <div class="form-group @(Model.Config.TestScope == "instance" ? string.Empty : "hidden")" id="allowlist-group">
-                    <label asp-for="Config.TestAllowlist">Test Allowlist</label>
-                    <textarea asp-for="Config.TestAllowlist" rows="3" placeholder="chs, camp, https://w3-testing.asis.wsu.edu/aea/hep/"></textarea>
-                    <div class="input-help">Optional. Enter comma-separated sibling labels or full URLs to include additional sites from the same test instance in this audit.</div>
-                </div>
-
-                <div class="form-group @(Model.Config.TestScope == "instance" ? string.Empty : "hidden")" id="allowlist-file-group">
-                    <label asp-for="Config.TestAllowlistFile">Test Allowlist File</label>
-                    <input asp-for="Config.TestAllowlistFile" placeholder="path/to/test-sites-allowlist.txt" />
-                    <div class="input-help">Optional. Use one label or full URL per line. Blank lines and lines starting with <strong>#</strong> are ignored.</div>
+                <div class="form-group @(Model.Config.TestScope == "batch" ? string.Empty : "hidden")" id="batch-mappings-file-group">
+                    <label asp-for="Config.BatchSiteMappingsFile">Batch Site Mappings File</label>
+                    <input asp-for="Config.BatchSiteMappingsFile" placeholder="path/to/batch-site-mappings.txt" />
+                    <div class="input-help">Required for external batch runs. Use one line per site in the format <strong>Site Name | Source URL | Test Path or Full Test URL</strong>.</div>
                 </div>
 
                 <div class="form-group">
@@ -825,12 +826,13 @@
             const sourceUrlInput = document.getElementById('Config_SourceUrl');
             const testUrlSelect = document.getElementById('Config_TestUrl');
             const testScopeSelect = document.getElementById('Config_TestScope');
+            const singleSiteFields = document.getElementById('single-site-fields');
             const customTestUrlGroup = document.getElementById('custom-test-url-group');
             const customTestUrlInput = document.getElementById('CustomTestUrl');
             const sourceSubdomainGroup = document.getElementById('source-subdomain-group');
             const sourceSubdomainInput = document.getElementById('Config_SourceIsSubdomain');
-            const allowlistGroup = document.getElementById('allowlist-group');
-            const allowlistFileGroup = document.getElementById('allowlist-file-group');
+            const batchMappingsFileGroup = document.getElementById('batch-mappings-file-group');
+            const batchMappingsFileInput = document.getElementById('Config_BatchSiteMappingsFile');
             const runButton = document.getElementById('run-button');
             const buttonText = document.getElementById('btn-text');
             const runStatePill = document.getElementById('run-state-pill');
@@ -891,8 +893,8 @@
                 }
             }
 
-            function isInstanceScope() {
-                return !!(testScopeSelect && testScopeSelect.value === 'instance');
+            function isBatchScope() {
+                return !!(testScopeSelect && testScopeSelect.value === 'batch');
             }
 
             function buildStatBadge(label, value) {
@@ -934,22 +936,29 @@
             }
 
             function syncScopeVisibility() {
-                const showInstanceInputs = isInstanceScope();
+                const showBatchInputs = isBatchScope();
 
-                if (allowlistGroup) {
-                    allowlistGroup.classList.toggle('hidden', !showInstanceInputs);
+                if (singleSiteFields) {
+                    singleSiteFields.classList.toggle('hidden', showBatchInputs);
                 }
 
-                if (allowlistFileGroup) {
-                    allowlistFileGroup.classList.toggle('hidden', !showInstanceInputs);
+                if (batchMappingsFileGroup) {
+                    batchMappingsFileGroup.classList.toggle('hidden', !showBatchInputs);
                 }
 
                 if (sourceSubdomainGroup) {
-                    sourceSubdomainGroup.classList.remove('hidden');
+                    sourceSubdomainGroup.classList.toggle('hidden', showBatchInputs);
                 }
 
                 if (sourceSubdomainInput) {
-                    sourceSubdomainInput.disabled = false;
+                    sourceSubdomainInput.disabled = showBatchInputs;
+                    if (showBatchInputs) {
+                        sourceSubdomainInput.checked = false;
+                    }
+                }
+
+                if (batchMappingsFileInput) {
+                    batchMappingsFileInput.disabled = !showBatchInputs;
                 }
             }
 
@@ -1057,8 +1066,8 @@
                 event.preventDefault();
                 normalizeUrlInputValue(sourceUrlInput);
                 normalizeUrlInputValue(customTestUrlInput);
-                const instanceMode = isInstanceScope();
-                setRunFeedback((instanceMode ? 'Instance audit request submitted. ' : 'Audit request submitted. ') + '@Model.RunDurationNotice', 'info');
+                const batchMode = isBatchScope();
+                setRunFeedback((batchMode ? 'Batch audit request submitted. ' : 'Audit request submitted. ') + '@Model.RunDurationNotice', 'info');
 
                 if (testUrlSelect.value === customTestUrlOption && !(customTestUrlInput.value || '').trim()) {
                     setRunFeedback('Enter a custom Test URL before starting the audit.', 'error');
@@ -1084,8 +1093,14 @@
                         throw new Error(payload.error || 'Audit failed before report generation completed.');
                     }
 
-                    setRunFeedback('Audit complete. Latest report links are ready below.', 'success');
-                    renderHistory(payload);
+                    if (payload.batchMode) {
+                        const reportCount = Array.isArray(payload.batchReports) ? payload.batchReports.length : 0;
+                        setRunFeedback(`Batch audit complete. Generated ${reportCount} report set(s).`, 'success');
+                        renderHistory({ hasReports: false });
+                    } else {
+                        setRunFeedback('Audit complete. Latest report links are ready below.', 'success');
+                        renderHistory(payload);
+                    }
                     setRunState('Complete');
                     window.setTimeout(function () {
                         setRunState('Ready');

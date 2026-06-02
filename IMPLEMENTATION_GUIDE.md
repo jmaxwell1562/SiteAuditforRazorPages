@@ -19,7 +19,74 @@ using AuditApp;
 builder.Services.AddMigrationAuditServices();
 ```
 
+If your application has a browser client and a server host, keep the audit package on the server side. Do not load it into a WebAssembly client. A practical pattern is a server-side controller or endpoint that injects `AuditService` and calls `RunAuditAsync()`.
+
+For embedded browser-client integrations, a clean host pattern is:
+
+1. `/Audit` hosts the interactive runner UI.
+2. The runner posts a host-owned request DTO to a server-side endpoint.
+3. The endpoint maps that DTO to `AuditConfig`, runs the audit, and returns a host-owned response DTO with report metadata and route-safe links.
+4. On success, the runner navigates to a dedicated results page such as `/Audit/Results`.
+5. The results page presents the HTML report as the primary artifact and can preview it inline in an iframe.
+
+That pattern keeps the package server-side, keeps the browser contract stable, and avoids leaving a loading placeholder visible after the runner hydrates.
+
+Example controller shape:
+
+```csharp
+using AuditApp.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace YourApp.Api;
+
+[ApiController]
+[Route("api/audit")]
+public class AuditController : ControllerBase
+{
+    private readonly AuditService _auditService;
+
+    public AuditController(AuditService auditService)
+    {
+        _auditService = auditService;
+    }
+
+    [HttpPost("run")]
+    public async Task<IActionResult> Run([FromBody] AuditRunRequest request)
+    {
+        var progressMessages = new List<string>();
+        var progress = new Progress<string>(message => progressMessages.Add(message));
+        var summary = await _auditService.RunAuditAsync(MapToConfig(request), progress);
+
+        return Ok(new
+        {
+            success = true,
+            messages = progressMessages,
+            summary = new
+            {
+                summary.SiteName,
+                summary.RunDate,
+                summary.PassCount,
+                summary.ReviewCount,
+                summary.FailCount,
+                HtmlUrl = ToReportUrl(summary.HtmlReportPath),
+                ExecutiveHtmlUrl = ToReportUrl(summary.ExecutiveHtmlPath),
+                XlsxUrl = ToReportUrl(summary.XlsxPath)
+            }
+        });
+    }
+}
+```
+
+`AuditRunRequest` and `AuditRunResponse` belong to the host app, not the package. That lets the host define its own public API contract and results-page routing without leaking `AuditConfig` directly to the browser.
+
 ## Architecture
+
+### Recommended Host UX
+
+- Keep the package on the server side.
+- Serve the HTML, executive preview, Excel, and CSV artifacts through route-based URLs such as `/reports/<filename>`.
+- If you use an embedded WebAssembly runner, use the Razor Page fallback only for initial hydration.
+- After a successful run, redirect to a dedicated results page rather than keeping the user on a page that still looks like it is loading.
 
 ### Services
 

@@ -389,7 +389,7 @@ namespace AuditApp.Services
         private static void WriteResultsSheet(ExcelPackage package, AuditSummary summary)
         {
             var sheet = package.Workbook.Worksheets.Add("Audit Detail");
-            var headers = new[] { "Path", "Status", "Score", "Source URL", "Test URL", "Root Cause", "Note", "Section" };
+            var headers = new[] { "Path", "Test Site", "Status", "Score", "Source URL", "Test URL", "Root Cause", "Note", "Section" };
 
             for (var index = 0; index < headers.Length; index++)
             {
@@ -403,15 +403,16 @@ namespace AuditApp.Services
             foreach (var result in summary.AllResults)
             {
                 sheet.Cells[row, 1].Value = result.Path;
-                sheet.Cells[row, 2].Value = NormalizeStatusLabel(result.Status);
-                sheet.Cells[row, 3].Value = result.Score;
-                sheet.Cells[row, 3].Style.Numberformat.Format = "0.0%";
-                sheet.Cells[row, 4].Value = result.SourceUrl;
-                sheet.Cells[row, 5].Value = result.TestUrl;
-                sheet.Cells[row, 6].Value = result.RootCause;
-                sheet.Cells[row, 7].Value = result.Note;
-                sheet.Cells[row, 8].Value = result.Section;
-                ApplyStatusFill(sheet.Cells[row, 2], result.Status);
+                sheet.Cells[row, 2].Value = result.TestSite;
+                sheet.Cells[row, 3].Value = NormalizeStatusLabel(result.Status);
+                sheet.Cells[row, 4].Value = result.Score;
+                sheet.Cells[row, 4].Style.Numberformat.Format = "0.0%";
+                sheet.Cells[row, 5].Value = result.SourceUrl;
+                sheet.Cells[row, 6].Value = result.TestUrl;
+                sheet.Cells[row, 7].Value = result.RootCause;
+                sheet.Cells[row, 8].Value = result.Note;
+                sheet.Cells[row, 9].Value = result.Section;
+                ApplyStatusFill(sheet.Cells[row, 3], result.Status);
                 row++;
             }
 

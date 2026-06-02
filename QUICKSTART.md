@@ -14,12 +14,16 @@ This produces `AuditApp.Package\bin\Release\WSU.MigrationAudit.0.1.0.nupkg`.
 **Option A: local project reference during development**
 
 ```bash
+cd path/to/your/app
 dotnet add reference ..\PostMigrationUmbraco_SiteAudit\AuditApp.Package\AuditApp.Package.csproj
 ```
 
 **Option B: consume the packed NuGet package**
 
+Change to the consuming project directory first, then add the package there.
+
 ```bash
+cd path/to/your/app
 dotnet add package WSU.MigrationAudit --source <your-package-feed>
 ```
 
@@ -69,34 +73,62 @@ public void ConfigureServices(IServiceCollection services)
 
 ## Step 5: Call the Package
 
-```csharp
-using AuditApp.Models;
-using AuditApp.Services;
+For a web app with a separate browser client, call the package from the server-side project, not from a Blazor WebAssembly client.
 
-public class AuditRunner
+Recommended pattern:
+
+- install and register `WSU.MigrationAudit` in the server/web project
+- create a server-side API endpoint that injects `AuditService`
+- let the UI call that endpoint
+- on success, redirect the UI from `/Audit` to a dedicated results page such as `/Audit/Results`
+- on the results page, show the HTML report as the primary link and optionally preview it inline
+
+```csharp
+using AuditApp.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace YourApp.Api;
+
+[ApiController]
+[Route("api/audit")]
+public class AuditController : ControllerBase
 {
     private readonly AuditService _auditService;
 
-    public AuditRunner(AuditService auditService)
+    public AuditController(AuditService auditService)
     {
         _auditService = auditService;
     }
 
-    public async Task<AuditSummary> RunAsync()
+    [HttpPost("run")]
+    public async Task<IActionResult> Run([FromBody] AuditRunRequest request)
     {
-        var config = new AuditConfig
-        {
-            SiteName = "Test Site",
-            SourceUrl = "https://example.com",
-            TestUrl = "https://example-dev.com",
-            MaxTabs = 5,
-            MaxPaths = 80
-        };
+        var progressMessages = new List<string>();
+        var progress = new Progress<string>(message => progressMessages.Add(message));
 
-        return await _auditService.RunAuditAsync(config);
+        var summary = await _auditService.RunAuditAsync(MapToConfig(request), progress);
+
+        return Ok(new
+        {
+            success = true,
+            messages = progressMessages,
+            summary = new
+            {
+                summary.SiteName,
+                summary.RunDate,
+                summary.PassCount,
+                summary.ReviewCount,
+                summary.FailCount,
+                HtmlUrl = ToReportUrl(summary.HtmlReportPath),
+                ExecutiveHtmlUrl = ToReportUrl(summary.ExecutiveHtmlPath),
+                XlsxUrl = ToReportUrl(summary.XlsxPath)
+            }
+        });
     }
 }
 ```
+
+If you are using Blazor WebAssembly, do not add `AuditApp` or `OfficeOpenXml` directly to the browser client project. Keep the audit package on the server side.
 
 ## Step 6: Create Report Output Folder
 
@@ -149,12 +181,19 @@ app.Use(async (context, next) =>
    - Test URL: "https://example-dev.com"
    - Click "Start Audit"
 
+5. **Expected success flow:**
+    - `/Audit` submits the request
+    - the server returns typed report metadata
+    - the app navigates to `/Audit/Results`
+    - the results page shows the HTML report link and related artifact links
+
 ## Step 8: Verify Output
 
 After audit completes, you should see:
 
-- ✓ New Report and Previous Report history cards
-- ✓ Links to generated reports (HTML, Executive Preview, Excel)
+- ✓ A dedicated results page such as `/Audit/Results` or equivalent host-specific success surface
+- ✓ Links to generated reports (HTML, Executive Preview, Excel, and optionally CSV)
+- ✓ HTML report preview inline when the host app supports it
 - ✓ HTML report with Section Release Readiness and Detailed Rows tables
 - ✓ Release readiness CSV with section-based rows
 - ✓ Fix On Test Site top priorities
@@ -198,6 +237,10 @@ mkdir Audits
 ```csharp
 using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) })
 ```
+
+### Issue: "The loading audit runner message never goes away"
+
+**Solution:** If your host uses an embedded WebAssembly runner on `/Audit`, remove any permanent static fallback block once the component mounts and redirect successful runs to a separate results page.
 
 ## Customization
 
